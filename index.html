@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UGD Puskesmas Liukang Tupabbiring — Rekap Obat & Bahan Medis</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2300d4aa'/><text x='16' y='22' text-anchor='middle' fill='%230a0f1a' font-size='18' font-weight='bold'>+</text></svg>"/>
+  <meta name="theme-color" content="#00d4aa"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2235; --bg4: #243049;
+      --border: #2a3a54; --text: #e8ecf4; --text2: #8b9dc3; --text3: #5a6f94;
+      --accent: #00d4aa; --accent2: #00b894; --accent-bg: rgba(0,212,170,0.08);
+      --red: #ff6b6b; --red-bg: rgba(255,107,107,0.08);
+      --blue: #4da6ff; --blue-bg: rgba(77,166,255,0.08);
+      --orange: #ffa94d; --orange-bg: rgba(255,169,77,0.08);
+      --green: #51cf66; --green-bg: rgba(81,207,102,0.08);
+      --shadow: 0 4px 24px rgba(0,0,0,0.3); --radius: 10px;
+    }
+    html,body,#root { height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .header {
+      background: linear-gradient(135deg, var(--bg2), var(--bg3));
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px; display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; color: var(--bg); flex-shrink: 0;
+    }
+    .header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    .sync-badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 600;
+    }
+    .sync-online { background: var(--green-bg); color: var(--green); }
+    .sync-offline { background: var(--red-bg); color: var(--red); }
+    .sync-loading { background: var(--orange-bg); color: var(--orange); }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .sync-dot.online { background: var(--green); animation: pulse 2s infinite; }
+    .sync-dot.offline { background: var(--red); }
+    .sync-dot.loading { background: var(--orange); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .main-area { display: flex; flex: 1; }
+    .sidebar {
+      width: 220px; background: var(--bg2); border-right: 1px solid var(--border);
+      padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+    }
+    .nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border: none; background: transparent;
+      color: var(--text2); font-size: 13.5px; font-family: inherit; font-weight: 500;
+      border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .nav-btn:hover { background: var(--bg3); color: var(--text); }
+    .nav-btn.active { background: var(--accent-bg); color: var(--accent); }
+    .nav-btn .badge { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+
+    .content { flex: 1; padding: 24px; overflow-y: auto; max-height: calc(100vh - 73px); }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .page-sub { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+    .stat-label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .stat-value.green { color: var(--accent); } .stat-value.blue { color: var(--blue); }
+    .stat-value.orange { color: var(--orange); } .stat-value.red { color: var(--red); }
+
+    .section-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .section-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .search-box { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; flex: 1; min-width: 200px; }
+    .search-box input { border: none; background: transparent; color: var(--text); font-family: inherit; font-size: 13px; outline: none; width: 100%; }
+    .search-box input::placeholder { color: var(--text3); }
+
+    select,.select-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-family: inherit; font-size: 13px; outline: none; cursor: pointer; }
+    select option { background: var(--bg2); color: var(--text); }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--accent); color: var(--bg); }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(255,107,107,0.2); }
+    .btn-danger:hover { background: rgba(255,107,107,0.15); }
+    .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg3); color: var(--text); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-masuk { background: var(--green-bg); color: var(--green); border: 1px solid rgba(81,207,102,0.2); }
+    .btn-keluar { background: var(--orange-bg); color: var(--orange); border: 1px solid rgba(255,169,77,0.2); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); border-bottom: 1px solid var(--border); }
+    td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid rgba(42,58,84,0.4); }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+    .tag-masuk { background: var(--green-bg); color: var(--green); }
+    .tag-keluar { background: var(--orange-bg); color: var(--orange); }
+    .tag-cat { background: var(--blue-bg); color: var(--blue); }
+
+    .stock-warn { display: flex; align-items: center; gap: 6px; color: var(--red); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .stock-ok { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+
+    .critical-stock-card { background: rgba(255,60,60,0.12); border: 2px solid rgba(255,60,60,0.35); border-radius: var(--radius); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; position: relative; overflow: hidden; }
+    .critical-stock-card::before { content: "KRITIS"; position: absolute; top: 6px; right: -22px; background: var(--red); color: #fff; font-size: 8px; font-weight: 700; letter-spacing: 1px; padding: 2px 28px; transform: rotate(45deg); }
+    .critical-stock-name { font-weight: 700; font-size: 13px; color: var(--red); }
+    .critical-stock-count { font-family: 'JetBrains Mono', monospace; color: var(--red); font-weight: 700; font-size: 22px; }
+    .low-stock-card { background: var(--orange-bg); border: 1px solid rgba(255,169,77,0.2); border-radius: var(--radius); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .low-stock-name { font-weight: 600; font-size: 13px; }
+    .low-stock-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .low-stock-count { font-family: 'JetBrains Mono', monospace; color: var(--orange); font-weight: 700; font-size: 18px; }
+    .kritis-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); transition: all 0.15s; }
+    .kritis-toggle.active { border-color: rgba(255,60,60,0.4); background: rgba(255,60,60,0.08); }
+    .kritis-check { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--text3); display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+    .kritis-check.checked { background: var(--red); border-color: var(--red); }
+    .kritis-label { font-size: 13px; font-weight: 500; }
+    .kritis-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+    .kritis-badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text3); font-family: inherit; transition: all 0.15s; }
+    .kritis-badge:hover { border-color: var(--text2); color: var(--text2); }
+    .kritis-badge.active { background: rgba(255,60,60,0.12); color: var(--red); border-color: rgba(255,60,60,0.35); animation: pulse 2s infinite; }
+    .kritis-badge.active:hover { background: rgba(255,60,60,0.2); }
+
+    .export-preview { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 8px; text-align: center; }
+    .export-preview-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .export-preview-count { font-size: 14px; color: var(--text); }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
+    .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 480px; max-width: 95vw; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input { width: 100%; padding: 10px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 13px; outline: none; transition: border-color 0.15s; }
+    .form-input:focus { border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-error { color: var(--red); font-size: 12px; margin-bottom: 12px; padding: 8px 12px; background: var(--red-bg); border-radius: 6px; }
+
+    .item-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; margin-top: 4px;
+      max-height: 240px; overflow-y: auto; z-index: 300;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .item-dropdown-row {
+      padding: 10px 14px; cursor: pointer;
+      border-bottom: 1px solid rgba(42,58,84,0.3);
+      transition: background 0.1s;
+    }
+    .item-dropdown-row:last-child { border-bottom: none; }
+    .item-dropdown-row:hover { background: var(--bg3); }
+    .item-dropdown-row.selected { background: var(--accent-bg); border-left: 3px solid var(--accent); }
+    .item-dropdown-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .item-dropdown-meta { display: flex; align-items: center; gap: 8px; }
+    .item-dropdown-empty { padding: 14px; text-align: center; color: var(--text3); font-size: 12px; }
+
+    .actions { display: flex; gap: 6px; }
+
+    .recent-tx { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 24px; }
+    .recent-tx-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+
+    .quick-actions { display: flex; gap: 12px; margin-bottom: 28px; }
+    .quick-btn { flex: 1; display: flex; align-items: center; gap: 12px; padding: 18px 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; font-family: inherit; color: var(--text); }
+    .quick-btn:hover { border-color: var(--accent); background: var(--accent-bg); }
+    .quick-btn .icon-wrap { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .quick-btn .qb-title { font-weight: 600; font-size: 14px; }
+    .quick-btn .qb-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+    .info-banner { padding: 14px 18px; border-radius: var(--radius); margin-bottom: 20px; font-size: 12px; display: flex; align-items: center; gap: 10px; line-height: 1.5; }
+    .info-banner.green { background: var(--green-bg); color: var(--green); border: 1px solid rgba(81,207,102,0.15); }
+
+    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; color: var(--text2); }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-top: 1px solid var(--border); padding: 8px 0 env(safe-area-inset-bottom,8px); z-index: 100; }
+    .mobile-nav-inner { display: flex; justify-content: space-around; }
+    .mobile-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--text3); font-family: inherit; font-size: 10px; font-weight: 500; padding: 6px 12px; cursor: pointer; }
+    .mobile-nav-btn.active { color: var(--accent); }
+
+    @media (max-width:900px) {
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .sidebar { display: none; }
+      .quick-actions { flex-direction: column; }
+      .mobile-nav { display: block; }
+      .content { max-height: calc(100vh - 73px - 60px); padding-bottom: 80px; }
+    }
+    @media (max-width:600px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .header { padding: 12px 16px; }
+      .content { padding: 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useRef } = React;
+
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║  GANTI KONFIGURASI DI BAWAH INI DENGAN MILIK ANDA          ║
+    // ║  Lihat PANDUAN-FIREBASE.md untuk cara mendapatkannya       ║
+    // ╚══════════════════════════════════════════════════════════════╝
+    const firebaseConfig = {
+      apiKey: "GANTI_DENGAN_API_KEY_ANDA",
+      authDomain: "GANTI_DENGAN_AUTH_DOMAIN",
+      projectId: "GANTI_DENGAN_PROJECT_ID",
+      storageBucket: "GANTI_DENGAN_STORAGE_BUCKET",
+      messagingSenderId: "GANTI_DENGAN_SENDER_ID",
+      appId: "GANTI_DENGAN_APP_ID"
+    };
+
+    let db = null;
+    let firebaseReady = false;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      if (firebaseConfig.projectId !== "GANTI_DENGAN_PROJECT_ID") firebaseReady = true;
+    } catch (e) { console.error("Firebase init error:", e); }
+
+    const CATEGORIES = ["Obat", "Alat Medis", "Cairan Infus", "Bahan Habis Pakai", "Lainnya"];
+    const UNITS = ["tablet","ampul","kapsul","botol","buah","tube","roll","box","sachet","bag","kotak","bungkus","pasang","strip","patch","test","paket","blister","suppositoria"];
+    const defaultItems = [
+      { name:"Alat Suntik 10 ml Syrnge", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Alat suntik sekali pakai 0,05 ml", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Alat suntik sekali pakai 0,5 ml", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Alat suntik sekali pakai 1 ml", category:"Alat Medis", unit:"buah", stock:5, minStock:3, kritis:true },
+      { name:"Alat suntik sekali pakai 10 ml", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Alat suntik sekali pakai 3 ml", category:"Alat Medis", unit:"buah", stock:9, minStock:3, kritis:true },
+      { name:"Alat suntik sekali pakai 5 ml", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Alat suntik sekali pakai 5 ml (P2PL)", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Alat suntik sekali pakai 5 ml( DAK )", category:"Alat Medis", unit:"buah", stock:17, minStock:3, kritis:true },
+      { name:"Bisturi/ pisau bedah", category:"Alat Medis", unit:"buah", stock:4, minStock:3, kritis:false },
+      { name:"Blood Lancet (Dak)", category:"Alat Medis", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Blood Lancet (PKG)", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Blood Lancet SHK", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Blood Lancet(Rematri)", category:"Alat Medis", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Disposible Safety Box 5 Liter", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Face Shield Anti Droplet", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Folley Catheter No. 16", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Folley Catheter No. 18", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"I.V. Catheter No. 18", category:"Alat Medis", unit:"buah", stock:17, minStock:3, kritis:true },
+      { name:"I.V. Catheter No. 20", category:"Alat Medis", unit:"buah", stock:7, minStock:3, kritis:true },
+      { name:"I.V. Catheter No. 22", category:"Alat Medis", unit:"buah", stock:15, minStock:3, kritis:true },
+      { name:"I.V. Catheter No. 24", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"I.V. Catheter No. 26 (JKN)", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Infusion Set Anak ( DAU)", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Infusion set anak", category:"Alat Medis", unit:"buah", stock:14, minStock:3, kritis:true },
+      { name:"Infusion set dewasa", category:"Alat Medis", unit:"buah", stock:3, minStock:3, kritis:true },
+      { name:"Nasal Oksigen Anak", category:"Alat Medis", unit:"buah", stock:5, minStock:3, kritis:true },
+      { name:"Nasal Oksigen Bayi", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Nasal Oksigen Dewasa", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Nasal canula M", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Nasal canula S", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Nebuliser Anak", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Nebuliser Dewasa", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Nurse Cup", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Safetiheel Newborn 1,00 mm (Blood lancet SHK)", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Safety Box HIV", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Urine Bag", category:"Alat Medis", unit:"buah", stock:10, minStock:3, kritis:false },
+      { name:"Wing Needle", category:"Alat Medis", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Catgut 2/0", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Catgut 3/0 Untuk Kulit", category:"Bahan Habis Pakai", unit:"buah", stock:1, minStock:3, kritis:false },
+      { name:"Catgut 3/0 untuk Otot", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Catgut 4/0 untuk Kulit", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Celemek Plstik", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Dermafix s IV", category:"Bahan Habis Pakai", unit:"box", stock:3, minStock:3, kritis:false },
+      { name:"Handsanitizer", category:"Bahan Habis Pakai", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Handscoen on M (Dak)", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon Obgyn Steril", category:"Bahan Habis Pakai", unit:"pasang", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon non steril L", category:"Bahan Habis Pakai", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon non steril M", category:"Bahan Habis Pakai", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon non steril S", category:"Bahan Habis Pakai", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon steril No. 6,5", category:"Bahan Habis Pakai", unit:"pasang", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon steril No. 7 (powder)", category:"Bahan Habis Pakai", unit:"pasang", stock:0, minStock:0, kritis:false },
+      { name:"Handscoon steril No. 7,5 (powder)", category:"Bahan Habis Pakai", unit:"pasang", stock:0, minStock:0, kritis:false },
+      { name:"Hypafix", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kapas Lidi", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Kapas pembalut 250 g", category:"Bahan Habis Pakai", unit:"bungkus", stock:0, minStock:0, kritis:false },
+      { name:"Kapas pembalut 500 g", category:"Bahan Habis Pakai", unit:"bungkus", stock:0, minStock:0, kritis:false },
+      { name:"Kasa 40 cm x 40 cm", category:"Bahan Habis Pakai", unit:"bungkus", stock:0, minStock:0, kritis:false },
+      { name:"Kasa 40 x 80 cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kasa Hidrofil Steril 16 x 16", category:"Bahan Habis Pakai", unit:"box", stock:2, minStock:3, kritis:false },
+      { name:"Kasa Kompres Steril 40 x 40", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Kasa Pembalut 2 m x 80 cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kasa Pembalut Hidrofil 4 m x 10 cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kasa Pembalut Hidrofil 4 m x 15 cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kasa Pembalut Hidrofil 4 m x 3 cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kasa Pembalut Hidrofil 4 m x 6' cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Kertas Saring SHK", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Kondom Sutra", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Labcare Blood Spot Smpling Paper ( Kertas Saring)", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Lisol", category:"Bahan Habis Pakai", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Masker", category:"Bahan Habis Pakai", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Masker Bedah", category:"Bahan Habis Pakai", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Masker N 95", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Masker oksigen anak", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Masker oksigen dewasa", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Plester (Microper Dispenser)", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Plester 7,5 cm x 4,5 cm", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Plester Nonwoven Fixation (aximed)", category:"Bahan Habis Pakai", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Polipix 5 cm x 5 m", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Pot Sputum steril", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Pot sputum non Steril", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Sarung Tangan Genokologi Non Steril", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Silk 3/0", category:"Bahan Habis Pakai", unit:"buah", stock:1, minStock:3, kritis:false },
+      { name:"Silk 3/0 (DHCHT)", category:"Bahan Habis Pakai", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Slide/ objec glass", category:"Bahan Habis Pakai", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Stericide 3", category:"Bahan Habis Pakai", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Asering", category:"Cairan Infus", unit:"botol", stock:1, minStock:3, kritis:true },
+      { name:"Larutan mengandung Elektrolit (KCl 0,15%, NaCL 0,9%) (KN1)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (25.00g dextrose anhidrat, 3.00 g sodium chloride, 0.15 g potassium chloride, 0.10 g calcium chloride dihydrate dan 1.55 g sodium lactate)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Dextrose 5%, NaCL 0,45%, KCl) (HSD)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Glukosa 25 g, NaCl 2,0 g, KCl 1,3 g, Natrium Laktat 3,1 g, air untuk injeksi ad 1000 ml)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Glukosa: 110.0 g; NaCl: 1.80 g) (D10-1/5NS)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Glukosa: 25,0 g; NaCl: 4,5 g)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Glukosa: 55.0 g; NaCl: 2.25 g) (D5-1/4NS)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Glukosa: 55.0 g; NaCl: 4.5 g) (D5-1/2NS)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (NaCl 1.125 gr, Dekstrosa 18.75 gr) (KA EN 1B)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (NaCl 1.75 g, KCL 1.5g, Glukosa 100 gr)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (NaCl 1.75 g, KCL 1.5g, Na Lactate 2.24 g, Glukosa 100 gr)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Nacl 1.75 gr, KCl 1.5 gr, Na Lactat 2.24 gr, Dekstrosa 27 gr) (KA EN 3B)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Nacl 2.34 gr, Na Laktat 2.24 gr, KCL 0.75 gr Dekstrosa 27 gr) (KA EN 3A)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung elektrolit (CaCl2H2O 0,165 gr, KCl 0,15 gr, NaCl 4,3 gr)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Manitol lar infus 20%", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"NaCl 0,9% Larutan", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"NaCl 0,9% Larutan (DAK)", category:"Cairan Infus", unit:"botol", stock:18, minStock:3, kritis:true },
+      { name:"NaCl 3% Larutan", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Ringer Laktat Larutan (DAK)", category:"Cairan Infus", unit:"botol", stock:2, minStock:3, kritis:true },
+      { name:"Ringer Laktat Larutan (DAU)", category:"Cairan Infus", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Asam Urat test strip", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Code Free Check (PKG)", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"DBD test NS 1", category:"Lainnya", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Fortacedx alat strip (Glukohero)", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Fortacedx test strip (Glukohero)", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Garam oralit kombinasi : natrium klorida 0,52 g + kalium klorida 0,30 g + trinatrium sitrat 0,58 g + glukosa anhidrat 2,7 g", category:"Lainnya", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Gluco Dr Test Strip", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glucose Test Strip Code Free Blood", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 10% steril 100 ml", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 10% steril 250 ml", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 10% steril 500 ml", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 40%", category:"Lainnya", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 5% steril 100 ml", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 5% steril 250 ml", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa Larutan Infus 5% steril 500 ml", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glukosa test strip (IVDX)", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"HIV test (Index HIV 1/2dan Siphilis Combo)", category:"Lainnya", unit:"test", stock:0, minStock:0, kritis:false },
+      { name:"Kalsium glukonat inj 100 mg/ml", category:"Lainnya", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Kolesterol test strip", category:"Lainnya", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Glukosa 55 g ; Natrium Chloride 9 g, air untuk injeksi ad 1000 ml) (D5-NS)", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Larutan Ringer & Glukosa 5%)", category:"Lainnya", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Onemed HCG Test Strip", category:"Lainnya", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Rapid 1 HIV (RI) (Virocheck HIV 1/2)", category:"Lainnya", unit:"test", stock:0, minStock:0, kritis:false },
+      { name:"Rapid 2 HIV", category:"Lainnya", unit:"test", stock:0, minStock:0, kritis:false },
+      { name:"Rapid 3 HIV", category:"Lainnya", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Rapid Test Antigen", category:"Lainnya", unit:"test", stock:0, minStock:0, kritis:false },
+      { name:"Rapid Test HBsAg", category:"Lainnya", unit:"test", stock:0, minStock:0, kritis:false },
+      { name:"Rapid Test HCV", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Rapid Test Syphilis (IMOQ Rapid test Ab Sifilis)", category:"Lainnya", unit:"test", stock:0, minStock:0, kritis:false },
+      { name:"Reagen Profolipid", category:"Lainnya", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Reagen ZN", category:"Lainnya", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Talasemia HB check (PKG) (DAK)", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Talasemia Strip HB check (PKG)", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Test Kehamilan", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Tifoid test", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Widal test", category:"Lainnya", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Abacavir 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Aciclovir CR 5 G (JKN)", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Air untuk injeksi", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Air untuk injeksi amp 20 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:true },
+      { name:"Air untuk injeksi amp 25 ml", category:"Obat", unit:"ampul", stock:7, minStock:3, kritis:true },
+      { name:"Alat HB Meter", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Alat Nesco Multicheck", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Albendazol susp 200 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Albendazol tab 400 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Alkohol swab", category:"Obat", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Alopurinol tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Alopurinol tab 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Ambroxol tab 30 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Aminofilin Tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:true },
+      { name:"Aminofilin inj 24 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:true },
+      { name:"Aminofilin tab 150 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:true },
+      { name:"Amitriptilin tab sal 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Amlodipin 5 mg (DAU)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Amlodipin tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Amlodipin tab 5 mg (DAK)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Amoksilin tab 500 mg (DAK)", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Amoksisilin drops 100 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Amoksisilin sir forte 250 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Amoksisilin sir kering 125 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Amoksisilin tab 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Amoksisilin tab 500 mg (DAU)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Ampisilin serb inj 1000 mg/vial", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Ampisilin serb inj 250 mg/vial", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Anestetik lokal gigi kombinasi : lidokain hcl 2% + epinefrin 1 : 80.000 inj 2 ml", category:"Obat", unit:"ampul", stock:10, minStock:3, kritis:true },
+      { name:"Antasida, kombinasi : aluminium hidroksida 200 mg + magnesium hidroksida 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Anti Parkinson kombinasi : benzerasid 25 mg + levodopa 100 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Antifungi salep, kombinasi : asam benzoat 6%+ asam salisilat 3%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Antihemoroid, kombinasi: bismut subgalat 150 mg + heksaklorofen 2,5 mg + lidokain lidokain 10 mg+ seng oksida 120 mg + sup ad 2 g", category:"Obat", unit:"suppositoria", stock:0, minStock:0, kritis:true },
+      { name:"Aquadest cairan 250 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Aquadest cairan 500 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Artesunat serb inj 60 mg/ml (i.v./i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Articulating paper kertas warna penanda oklusi", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Asam Asetat 5 %", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Asam asetat tetes telinga 2%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Asam asetilsalisilat (asetosal) tab 80 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam askorbat (vitamin C) tab 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam askorbat (vitamin C) tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam folat tab 0,4 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam folat tab 1 mg (JKN)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam folat tab 5 mg (JKN)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam mefenamat kaps 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam mefenamat kaps 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Asam retinoat krim 0,05%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Asam retinoat krim 0,1%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Asam salisilat lar 0,1%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Asam salisilat salep 10%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Asam salisilat salep 2%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Asam salisilat salep 5%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Asiklovir salep", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Asiklovir tab 400 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atapulgit 600 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atapulgit tab 630 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atapulgit tablet 650 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atapulgit tablet 750 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atenolol tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atenolol tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Atropin inj 0,25 mg/ml (i.m./i.v./s.k)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:true },
+      { name:"Atropin tab 0,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:true },
+      { name:"BAHAN MEDIS HABIS PAKAI (BMHP)", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"BD Gard", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"BHP Viral Load", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Bahan tumpatan sementara lar, serb", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Baju Hasmat/APD", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Becefort", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Becefort Sirup", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Bedak salisil serb 2%", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Betahistine 6 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Betametason krim 0,1%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Betametason krim 0,5 mg/g", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Betametason salep 0,1%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Betametason tts mata 1 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Bioplacenton tulle", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Bisakodil sup 10 mg", category:"Obat", unit:"suppositoria", stock:0, minStock:0, kritis:false },
+      { name:"Bisakodil sup 5 mg", category:"Obat", unit:"suppositoria", stock:0, minStock:0, kritis:false },
+      { name:"Bisakodil tab sal 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Budesonid cairan ih 0,25mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Budesonid cairan ih 0,25mg/ml, respoules 2 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Budesonid cairan ih 0,5 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Budesonid cairan ih 0,5 mg/ml, respoules 2 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Budesonid serb ih 100 mcg/dosis", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Budesonid serb ih 200 mcg/dosis", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Carestart Malaria HRP2/PLDH Combo", category:"Obat", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Cendo polydex", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Cetirizine tab", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Chlodine", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Chloramex 500 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Clobazam tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Compact Dry E. Coli With Membran Filter/48 test", category:"Obat", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Copper T", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Cotrimoxsazole 400 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"DILATAMOL CAIRAN INHALASI 2,5 ML", category:"Obat", unit:"ampul", stock:2, minStock:3, kritis:true },
+      { name:"Deksametason inj 5 mg/ml (i.v./i.m.)", category:"Obat", unit:"ampul", stock:5, minStock:3, kritis:true },
+      { name:"Deksametason tab 0,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Diazepam enema 10 mg/2,5 ml", category:"Obat", unit:"tube", stock:5, minStock:3, kritis:true },
+      { name:"Diazepam enema 5 mg/2,5 ml", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:true },
+      { name:"Diazepam inj 5 mg/ml (i.v./i.m.)", category:"Obat", unit:"ampul", stock:1, minStock:3, kritis:true },
+      { name:"Diazepam tab 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:true },
+      { name:"Diazepam tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:true },
+      { name:"Dietilkarbamazin tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Difenhidramin inj 10 mg/ml (i.v./i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Digoksin tab 0,25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Diltiazem kaps SR 100 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Diltiazem kaps SR 200 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Dimenhidrinat tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Doksisiklin kaps 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Dolutegravir tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Domperidon susp 5 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Domperidon tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Dulcolax suppo 5mg", category:"Obat", unit:"suppositoria", stock:0, minStock:0, kritis:false },
+      { name:"Efavirenz tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Efavirenz tab sal 600 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Emtech FOB (CKG Kolorectal)", category:"Obat", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"End Paper Doll 50 mm x 20 m", category:"Obat", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Epinefrin (adrenalin) inj 1 mg/ml", category:"Obat", unit:"ampul", stock:5, minStock:3, kritis:true },
+      { name:"Epnefrin Injeksi (JKN)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Ergotamin tab 1 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Eritromisin kaps 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Eritromisin sir 200 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Eritromisin tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Erlamycetin Tetes Telinga (JKN)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Estrogen terkonjugasi tab sal 0,625 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Etambutol tab 400 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Etanol 70% cairan 70%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Etil klorida semprot 100 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Etonogestrel implan 68 mg", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Eugenol", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Evavirenz 600 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Feeding tube", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Fenitoin Na inj 50 mg/ml (100 mg/ 2 mL)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Fenitoin Na kaps 100 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Fenitoin Na kaps 30 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Fenobarbital Injeksi", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Fenobarbital tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fenobarbital tab 30 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fenoksimetil penisilin (penisilin V) tab 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fenoksimetil penisilin (penisilin V) tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fenol Gliserol Tetes Telinga", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Fibumin Forte", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Fitomenadion (vitamin K 1) inj 2 mg/ml (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Fitomenadion (vitamin K 1) tab sal 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fitomenadion (vitamin K1) inj 10 mg/ml (i.m)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fluconazole", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fluoksetin kaps 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fluoksetin kaps 20 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fluor kapl 1 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Fluor sediaan topikal", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Formokresol", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Framisetin Sulfat Tulle 1%", category:"Obat", unit:"patch", stock:0, minStock:0, kritis:false },
+      { name:"Furosemid inj 10 mg/ml (i.v./i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Furosemid tab 40 mg (DAU)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Galactose microparticle 200-400 mg micropart/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Garam Fe, setara dengan Fe elemental 15 mg/5 mL", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Garam Fe, setara dengan Fe elemental 60 mg", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Gentamicin inj 40 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Gentamisin salep mata 0,3%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Gentamisin tts mata 0,3%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glass ionomer ART (Atraumatic Restorative Treatment) cocoa butter 5 g", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Glass ionomer ART (Atraumatic Restorative Treatment) lar", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Glass ionomer ART (Atraumatic Restorative Treatment) serb", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Glibenklamid tab 2,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Glibenklamid tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Glikuidon tab 30 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Glimepirid tab 1 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Glimepirid tab 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Glipizid tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Gliseril Guaiakolat tablet 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Gliseril trinitrat tab 0,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Gliserin tts 100 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Golongan darah test", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Griseofulvin (micronized) tab 125 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Griseofulvin (micronized) tab scored 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Gutta percha dan paper points 15 - 40 mm", category:"Obat", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Gutta percha dan paper points 45 - 80 mm", category:"Obat", unit:"roll", stock:0, minStock:0, kritis:false },
+      { name:"Gynaecological Glove Size Medium", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Gynaecological Glove Size Small", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Haloperidol inj 5 mg/ml (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Haloperidol tab 0,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Haloperidol tab 1,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Haloperidol tab 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Haloperidol tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Haloperidol tts 2 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Handwash Chlodine 0,5%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Hemafort", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Hepatitis B imunoglobulin (human) inj 150 IU/1,5 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Hepatitis Immuno Globuline (Human) Vaksin", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Herba Asimor Kaplet", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Herbakof", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Hidrogen peroksida cairan 3%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Hidroklorotiazid tab 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Hidrokortison krim 2,5%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Hidrokortison serb inj 100 mg", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Hiosina butilbromida tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Human tetanus imunoglobulin inj 250 UI (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Human tetanus imunoglobulin inj 500 UI (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"IUD Cu T 380 A", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"IUD Levonorgestrel", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Ibuprofen sir 100 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Ibuprofen sir 200 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Ibuprofen tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Ibuprofen tab 400 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Ipratropium bromida aerosol 20 mcg/semprot", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Ipratropium bromida cairan ih 0,025%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Isoniazid tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Isoniazid tab 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Isosorbid dinitrat tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"KETOROLAC TROMETAMOL INJ 30 MG/M (JKN)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Kalamin", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Kalsium Hidroksida Pasta", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Kalsium hidroksida bubuk, pasta", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Kalsium karbonat tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kalsium laktat (kalk) tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kaptopril tab 12,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kaptopril tab 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kaptopril tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Karbamazepin Tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Karbamazepin sir 100 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Karbamazepin tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Karbogliserin tts telinga 10 %", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Ketokonazol tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klindamisin kaps 150 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Klindamisin kaps 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klofazimin, micronized kaps 50 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Klofazimin, micronizedkaps 100 mg", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Klonidin tab 0,15 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol Salep Kulit 3% (Grafacetin Krim) 20 mg/gram", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol kaps 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol salep 2%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol salep mata 1%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol serb inj 1.000 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol susp 125 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol tetes telinga 3%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol tts mata 0,5%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Kloramfenikol tts mata 1%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Klorfeniramin tab 4 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klorfenol kamfer mentol (CHKM)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Klorheksidin lar 0,2% (Chlodine 2%)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Klorheksidin lar 15%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Klorpromazin inj 25 mg/ml (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Klorpromazin inj 5 mg/ml (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Klorpromazin tab sal 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klorpromazin tab sal 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klortalidon tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klozapin tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Klozapin tab 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kodein tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Komb: Deksametason 0,1% Thymol 5% Paraklorphenol 30", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi (DHP) : dihidroartemisin 40 mg + Piperakuin 320 mg tab sal selaput", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : (Zidovudin 60 mg + Lamivudin 30 mg + Nevirapin 50 mg) Ped Triple FDC", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : Desogestrel 150 mcg Etinilestradiol 30 mcg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : Ferro fumarat 60 mg + asam folat 0,4 mg tab salut", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : Tenofovir 300 mg + Emtrisitabin 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : Tenofovir 300 mg + Lamivudin 300 mg + Efavirenz 600 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : artemether 20 mg + lumefantrin 120 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : ergotamin 1 mg+ kafein 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : levonorgestrel 150 mcg + etinilestradiol 30 mcg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi : zidovudin 300 mg +lamivudin 150 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi: Ipratropium bromida 0,5 mg + Salbutamol 2,5 mg, cairan ih", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi: Tenofovir 300 mg + Lamivudin 300 mg + Dolutegravir 50 mg, tablet", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi: kaolin 550 mg + pektin 20 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kombinasi: lidokain + medisinal creosote phenol + eugenol + benzil alkohol, cairan", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Kombinasi: lopinavir 200 mg + ritonavir (LVP) 50 mg, tab 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Komposit resin", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Kotrimoksazol (dewasa) kombinasi : sulfametoksazol 800 mg+ trimetoprim 160 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Kotrimoksazol kombinasi tiap 5 ml suspensi : sulfametoksazol 200 mg + trimetoprim 40 mg", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Kuinin inj 25% (i.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Kuinin tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Laktulosa sir 3,335 g/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Lamivudin (3TC) tab 150 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lamivudine 150 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Elektrolit (Kalium Klorida)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Elektrolit (Na 130 mEq, K 4 mEq, Cl 109 mEq, Ca 3 mEq, Asetat 28 mEq) Ringer Asetat", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Elektrolit (Sodium Lactate sol (50%) 113 gr/L, Potassium Chloride 0.3 gr/L, Calcium Chloride 0.2 gr/L, elektrolit)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Elektrolit (Tiap 1000 ml mengandung electrolit: Sodium 145 mmol/l, Potassium 4.0 mmol/l, Calcium 2.5 mmol/l, Magnesium 1.0 mmol/l, Chloride 118 mmol/l, Acetate 24 mmol/l, Malate 5.0 mmol/l)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat (Fructose 120 g, glucose 66 g, Xylitol 60 g/ L)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat (Fructose 15 mg, glucose monohydrate 30 mg, xylitol 15 mg)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat (Fructose 200 g, glucose 110 g, Xylitol 100 g/ L)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat (Fructose 60 g, glucose 33 g, Xylitol 30 g/ L)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat (Maltose 10%)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (25.00g maltose, 3.00 g sodium chloride, 0.15 g potassium chloride, 0.10 g calcium chloride dihydrate dan 1.55 g sodium lactate)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Acetate, Na, K, Cl, Ca, Mg, Sorbitol 50 gr/L)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Fructose 120 g, glucose 66 g, Xylitol 60 g/ L + elektrolit)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Larutan mengandung Karbohidrat + Elektrolit (Larutan nutrisi kombinasi infus per L: Na. 100mEQ, K 18mEQ, Ca. 4mEQ, Mg 6mEQ, Cl 90mEQ, Asetat 38mEQ, Sorbitol 50g)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Levofloxacin 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Levofloxacin 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Levonorgestrel implan 2 rods, 75 mg (3-4 tahun)", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Lidokain gel 2%", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:true },
+      { name:"Lidokain inj 2% (infiltr/p.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:true },
+      { name:"Lidokain salep 5%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:true },
+      { name:"Lidokain spray oral 10%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Linestrenol tab 0,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Liquor carbonis detergens lar 5%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Loperamid tab 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lopinavir 100 mg + Ritonavir 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lopinavir 40 mg + Ritonavir 10 mg ( FDC Anak )", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Loratadin", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lorazepam tab 0,5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lorazepam tab 1 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lorazepam tab sal 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Lubrikan", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Lugol", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Lytacur", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"MDT Mb Anak", category:"Obat", unit:"blister", stock:0, minStock:0, kritis:false },
+      { name:"MDT Mb Dewasa", category:"Obat", unit:"blister", stock:0, minStock:0, kritis:false },
+      { name:"MDT Pb Anak", category:"Obat", unit:"blister", stock:0, minStock:0, kritis:false },
+      { name:"Magnesium sulfat inj 20%", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Magnesium sulfat inj 40%", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Magnesium sulfat serb, ktg 30 g", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Mebendazol sir 100 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Mebendazol tab 100 mg", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Mebendazol tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Medroksi Progesteron Asetat Inj 50 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Medroksi progesteron asetat inj 150 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Metenamin mandelat (heksamin mandelat) tab salut enterik 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metformin tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metformin tab 850 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metil Prednisolone 4 mg (JKN)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metilergometrin inj 0,2 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Metilergometrin tab salut 0,125 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metilprednisolon inj 125 mg/2 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Metoklopramid inj 5 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Metoklopramid tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metoklopramid tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metronidazol lar inf 5 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Metronidazol susp 125 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Metronidazol tab 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Metronidazol tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Mikonazol krim 2%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Mikonazol serb 2%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Mineral Mix (Bismuth Subcitrate Tripotasium, Copper sulfate, Magnesium Chloride Anhydrous, Potassium Chloride, Zinc Acetate)", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Multivitamin (MMS)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Multivitamin Sirup (Caviplex) JKN", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Multivitamin Tablet ( Oxyvit)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"N-asetil sistein kaps 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Natrium Diklofenak Tetes Mata 1 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Natrium diklofenak tab 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Natrium diklofenak tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Natrium hipoklorit cairan konsentrat 5%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Natrium tiosulfat inj 25% (i.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Nevirapin tab 200 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Nevirapine 200 mg", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Nifedipin kaps 10 mg (JKN)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Nistatin susp 100.000 UI/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Nistatin tab salut 500.000 UI", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Nistatin tab vaginal 100.000 UI", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Nitrofurantoin tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Norepinefrin inj 1 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:true },
+      { name:"Nova Glass F (Imicryl)", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"OBAT TAMBAHAN", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"OBH SURYA ITRASAL SYR 100 ML", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"ONDANSETRON HCL DIHYDRATE INJ 4 MG/2 ML", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Obat Anti Tuberculosis FDC Kategori Anak", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Obat Anti Tuberculosis FDC Kategori I", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Obat Anti Tuberculosis FDC Kategori II", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Obat Anti Tuberculosis FDC Kategori Sisipan", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Obat Anti Tuberculosis Kombipak Anak", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Obat Anti Tuberculosis Kombipak Dewasa", category:"Obat", unit:"paket", stock:0, minStock:0, kritis:false },
+      { name:"Octenic", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Oksigen ih, gas dlm tabung", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:true },
+      { name:"Oksimetazolin tts hidung 0,025%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Oksimetazolin tts hidung 0,050%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Oksitetrasiklin 1% Salep Mata", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Oksitosin inj 10 UI/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Olopatadin tts mata 0,1%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Omeprazol inj 40 mg/10 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Omeprazol kaps 20 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Onoiwa", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Oxyvit C Plus", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Paraformaldehid tab 1 g", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Parasetamol Infus (JKN)", category:"Obat", unit:"bag", stock:4, minStock:3, kritis:true },
+      { name:"Parasetamol sir 120 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Parasetamol tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Parasetamol tts 60 mg/0,6 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Pasta devitalisasi (non arsen)", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Pasta pengisi saluran akar (pasta)", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Perak nitrat lar 20%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Perak sulfadiazin krim 1%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Permetrin krim 5 %", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Pipit Tetes", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Pirantel pamoat susp 125 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Pirantel pamoat tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Pirantel pamoat tab scored 125 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Pirantel pamoat tab scored 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Piridoksin (vitamin B6) inj 100 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Piridoksin (vitamin B6) tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Piridoksin (vitamin B6) tab 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Plastik Packing", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Pot Faeces Non Steril", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Povidon iodin lar 100 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Prednison tab 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Primakuin tab 15 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Pritavit", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Probenesid tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Prokain benzilpenisilin serb inj 3 juta UI/vial (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Propiltiourasil tab 100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Propranolol tab 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Proten Gold", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"RANITIDIN HCL INJ 50 MG/2 ML", category:"Obat", unit:"ampul", stock:8, minStock:3, kritis:true },
+      { name:"RDT Anti HBS", category:"Obat", unit:"strip", stock:0, minStock:0, kritis:false },
+      { name:"Ranitidin tab 150 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:true },
+      { name:"Retinol (vitamin A) kaps lunak 100.000 UI  ( BIRU)", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Retinol (vitamin A) kaps lunak 200.000 UI ( MERAH)", category:"Obat", unit:"kapsul", stock:0, minStock:0, kritis:false },
+      { name:"Rifampisin kaps 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Rifapentin tablet 150 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Rifapentine 300 mg/Isoniazid 300 mg (TPT)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Rifapentine 300mg/ Isoniazid 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Risperidon tab sal 1 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Risperidon tab sal 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"SCOPMA (JKN)", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Safetihell Neoborn 1.00mm", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Salbutamol cairan ih 1 mg/mL", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Salbutamol sir 2 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Salbutamol tab 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Salbutamol tab 4 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Salep 2-4, kombinasi : asam salisilat 2 %+ belerang endap 4 %", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Salep Whitefield", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Sefadroksil kaps 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Sefadroksil kaps/tab 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Sefadroksil sir kering 125 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Sefadroksil sir kering 250 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Serum anti bisa ular : A.B.U. I (khusus ular dari luar Papua) inj (i.m./i.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum anti bisa ular :A.B.U.II (khusus ular dari Papua) inj (i.m./i.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antidifteri (A.D.S) inj (i.m./i.v.) Inj i.m 10.000 UI/", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antirabies inj 100 UI/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antirabies inj 200 UI/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antitetanus (A.T.S) (i.m.) Inj 10.000 UI/vial (i.m /i.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antitetanus (A.T.S) inj 1500 UI/amp (i.m.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antitetanus (A.T.S) inj 20.000 UI/vial (i.m /i.v.)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Serum antitetanus (A.T.S) inj 5.000 IU/mL (i.m)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Setirizin sir 5 mg/5 ml.", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Sianokobalamin (vitamin B12) inj 500 mcg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Sianokobalamin (vitamin B12) tab 50 mcg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Simvastatin tab sal 10 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Simvastatin tab sal 20 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Simvastatin tab sal selaput 40 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Siprofloksasin tab scored 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Spironolakton tab 25 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Spons Gelatin (Hemospon)", category:"Obat", unit:"box", stock:0, minStock:0, kritis:false },
+      { name:"Stannous pyrophosphate 27,6 mg sodium pyrophosphate/vial", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Stimuno Sirup", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Streptomisin serb inj 1.000 mg/vial", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Strip HB", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Surgical ginggival pack", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"TDF(300)+3TC(300)+DTG(50) ( TELADO)", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"TDF(300)+3TC(300)+EVF(600)", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"TRANEXAMIC ACID 500 MG", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"TRANEXAMIC ACID INJ 500 MG/ 5ML", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Taburia 1 gr", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Tenofovir tab 300 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Terbutalin cairan ih 2,5 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Terbutalin inj 0,5 mg/ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Tetanus toxoid inj", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Tetrakain tts mata 0,5%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Tetrasiklin Salep Mata 1%", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Tetrasiklin kaps 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Tetrasiklin kaps 500 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Tiamin (vitamin B1) tab 50 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Timolol tts mata 0,25%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Timolol tts mata 0,5%", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Triflourperazine 5 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Triheksifenidil tab 2 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Tuberkulin", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Ultrasound Gel", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Umbilical Clamp", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Urea krim 10 %", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"Urea krim 20 %", category:"Obat", unit:"tube", stock:0, minStock:0, kritis:false },
+      { name:"VTM", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin BCG inj (i.k)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Combee Five", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin HPV (Human Papilloma Virus), vial 0,5 mL", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Hepatitis Dewasa", category:"Obat", unit:"buah", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Hepatitis Rekombinan Inj Prefilled Injection Device (Uniject) 0,5 ml (i.m)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Influenza", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Japanese Enchepalitis (J.E)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Meningitis Meningokokus", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin PCV", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Pentavac", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Rotavirus", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin Yellow Fever", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin bivalen OPV (b-OPV) drops 10 dosis", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin jerap difteri tetanus (DT)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin jerap difteri tetanus (Td)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin kombinasi DPT-HB-Hib", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin measless rubella (MR) Inj 0,5 mL (s.k)", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin polio IPV inj 0,5 ml", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin rabies, untuk manusia serb Inj 2,5 IU", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Vaksin rabies, untuk manusia serb inj (s.k./i.k) + booster", category:"Obat", unit:"ampul", stock:0, minStock:0, kritis:false },
+      { name:"Valproat sir 250 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Valproat tab sal 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Vitamin B kompleks", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Vitamin C 500 mg minimal non acidic 250 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Vitamin D3 1000", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Zidovudin  100 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false },
+      { name:"Zinc drops 10 mg/ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Zinc serb 10 mg", category:"Obat", unit:"sachet", stock:0, minStock:0, kritis:false },
+      { name:"Zinc sir 20 mg/5 ml", category:"Obat", unit:"botol", stock:0, minStock:0, kritis:false },
+      { name:"Zinc tab disp 20 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false }
+    ];
+
+    function formatDate(d) { return new Date(d).toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}); }
+    function todayStr() { return new Date().toISOString().split("T")[0]; }
+    function nowISO() { return new Date().toISOString(); }
+
+    const Icon = ({type, size=18}) => {
+      const s = {width:size,height:size,fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"};
+      const P = {
+        package:<><path d="M3 9l9-5 9 5-9 5-9-5z"/><path d="M3 9v8l9 5 9-5V9"/><path d="M12 14v8"/></>,
+        plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+        arrowDown:<><path d="M12 5v14"/><path d="M5 12l7 7 7-7"/></>,
+        arrowUp:<><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></>,
+        alert:<><path d="M12 2L2 22h20L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.5"/></>,
+        search:<><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></>,
+        clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></>,
+        home:<><path d="M3 12l9-9 9 9"/><path d="M5 10v10h5v-6h4v6h5V10"/></>,
+        x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+        check:<><polyline points="20 6 9 17 4 12"/></>,
+        edit:<><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+        trash:<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></>,
+        download:<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+        wifi:<><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></>,
+      };
+      return <svg viewBox="0 0 24 24" style={s}>{P[type]}</svg>;
+    };
+
+    const Modal = ({title,onClose,children}) => (
+      <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-title"><span>{title}</span><button className="btn btn-ghost btn-sm" onClick={onClose}><Icon type="x" size={16}/></button></div>
+        {children}
+      </div></div>
+    );
+
+    function App() {
+      const [items, setItems] = useState([]);
+      const [transactions, setTransactions] = useState([]);
+      const [page, setPage] = useState("dashboard");
+      const [showModal, setShowModal] = useState(null);
+      const [search, setSearch] = useState("");
+      const [filterCat, setFilterCat] = useState("Semua");
+      const [filterKritis, setFilterKritis] = useState("semua");
+      const [filterType, setFilterType] = useState("semua");
+      const [txSearch, setTxSearch] = useState("");
+      const [editItem, setEditItem] = useState(null);
+      const [editTx, setEditTx] = useState(null);
+      const [syncStatus, setSyncStatus] = useState(firebaseReady ? "loading" : "not_configured");
+      const [formItem, setFormItem] = useState({name:"",category:"Obat",unit:"tablet",stock:"",minStock:"",kritis:false});
+      const [formTx, setFormTx] = useState({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""});
+      const [formError, setFormError] = useState("");
+      const [itemSearch, setItemSearch] = useState("");
+      const [showExport, setShowExport] = useState(false);
+      const [exportMode, setExportMode] = useState("bulan");
+      const [exportBulan, setExportBulan] = useState(todayStr().slice(0,7));
+      const [exportFrom, setExportFrom] = useState(todayStr());
+      const [exportTo, setExportTo] = useState(todayStr());
+      const [showItemDropdown, setShowItemDropdown] = useState(false);
+      const itemDropdownRef = useRef(null);
+      const [loading, setLoading] = useState(firebaseReady);
+      const seeded = useRef(false);
+
+      useEffect(() => {
+        if (!firebaseReady || !db) { setLoading(false); return; }
+        let il=false, tl=false;
+        const ck = () => { if(il&&tl) setLoading(false); };
+
+        const u1 = db.collection("items").orderBy("name").onSnapshot(
+          snap => {
+            const d = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+            setItems(d); setSyncStatus("online"); il=true; ck();
+            if(d.length===0 && !seeded.current) { seeded.current=true; seedData(); }
+          },
+          () => { setSyncStatus("offline"); il=true; ck(); }
+        );
+        const u2 = db.collection("transactions").orderBy("createdAt","desc").onSnapshot(
+          snap => { setTransactions(snap.docs.map(doc=>({id:doc.id,...doc.data()}))); tl=true; ck(); },
+          () => { tl=true; ck(); }
+        );
+        return () => { u1(); u2(); };
+      }, []);
+
+      async function seedData() {
+        if(!db) return;
+        const b = db.batch();
+        defaultItems.forEach(it => b.set(db.collection("items").doc(), {...it, createdAt:nowISO()}));
+        await b.commit();
+      }
+
+      async function handleAddItem() {
+        if(!formItem.name||!formItem.stock||!formItem.minStock) { setFormError("Semua field wajib diisi"); return; }
+        try {
+          const data = {name:formItem.name, category:formItem.category, unit:formItem.unit, stock:Number(formItem.stock), minStock:Number(formItem.minStock), kritis:formItem.kritis||false};
+          if(editItem) await db.collection("items").doc(editItem.id).update(data);
+          else await db.collection("items").add({...data, createdAt:nowISO()});
+          setShowModal(null); setEditItem(null);
+          setFormItem({name:"",category:"Obat",unit:"tablet",stock:"",minStock:"",kritis:false}); setFormError("");
+        } catch(e) { setFormError("Gagal menyimpan: "+e.message); }
+      }
+
+      async function handleDeleteItem(id) {
+        if(confirm("Yakin hapus item ini?")) { try { await db.collection("items").doc(id).delete(); } catch(e) { alert("Gagal: "+e.message); } }
+      }
+
+      async function handleAddTx() {
+        if(!formTx.itemId||!formTx.qty||!formTx.operator) { setFormError("Item, jumlah, dan petugas wajib diisi"); return; }
+        const item = items.find(i=>i.id===formTx.itemId);
+        if(!item) return;
+        const qty = Number(formTx.qty);
+
+        if(editTx) {
+          try {
+            // Reverse old stock
+            const oldItem = items.find(i=>i.id===editTx.itemId);
+            if(oldItem) {
+              const reversedStock = editTx.type==="masuk" ? oldItem.stock - editTx.qty : oldItem.stock + editTx.qty;
+              await db.collection("items").doc(editTx.itemId).update({stock:reversedStock});
+            }
+            // Re-fetch item stock after reversal (may be same item)
+            const freshDoc = await db.collection("items").doc(item.id).get();
+            const freshStock = freshDoc.exists ? freshDoc.data().stock : item.stock;
+            if(formTx.type==="keluar" && qty>freshStock) { setFormError("Stok tidak cukup! Tersedia: "+freshStock+" "+item.unit); return; }
+            // Apply new stock
+            const newStock = formTx.type==="masuk" ? freshStock+qty : freshStock-qty;
+            await db.collection("items").doc(item.id).update({stock:newStock});
+            // Update transaction doc
+            await db.collection("transactions").doc(editTx.id).update({itemId:item.id, itemName:item.name, type:formTx.type, qty, date:formTx.date, note:formTx.note, operator:formTx.operator});
+            setShowModal(null); setEditTx(null); setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""}); setFormError("");
+          } catch(e) { setFormError("Gagal: "+e.message); }
+        } else {
+          if(formTx.type==="keluar" && qty>item.stock) { setFormError("Stok tidak cukup! Tersedia: "+item.stock+" "+item.unit); return; }
+          try {
+            const newStock = formTx.type==="masuk" ? item.stock+qty : item.stock-qty;
+            await db.collection("items").doc(item.id).update({stock:newStock});
+            await db.collection("transactions").add({itemId:item.id, itemName:item.name, type:formTx.type, qty, date:formTx.date, note:formTx.note, operator:formTx.operator, createdAt:nowISO()});
+            setShowModal(null); setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""}); setFormError("");
+          } catch(e) { setFormError("Gagal: "+e.message); }
+        }
+      }
+
+      function openEditTx(tx) {
+        setEditTx(tx);
+        setFormTx({itemId:String(tx.itemId), type:tx.type, qty:String(tx.qty), date:tx.date, note:tx.note||"", operator:tx.operator});
+        setItemSearch(tx.itemName);
+        setFormError("");
+        setShowModal("addTx");
+      }
+
+      function openEditItem(item) {
+        setEditItem(item);
+        setFormItem({name:item.name, category:item.category, unit:item.unit, stock:item.stock, minStock:item.minStock, kritis:item.kritis||false});
+        setShowModal("editItem");
+      }
+
+      async function toggleKritis(item) {
+        const newVal = !item.kritis;
+        if(db) { try { await db.collection("items").doc(item.id).update({kritis:newVal}); } catch(e) { console.error(e); } }
+        else { setItems(prev=>prev.map(i=>i.id===item.id?{...i,kritis:newVal}:i)); }
+      }
+
+      function handleExportCSV() { setShowExport(true); }
+
+      const [exportCSV, setExportCSV] = useState("");
+      const [exportFilename, setExportFilename] = useState("");
+
+      function handleFilteredExport() {
+        let filtered;
+        let filename;
+        if(exportMode==="bulan") {
+          filtered = transactions.filter(tx=>tx.date&&tx.date.startsWith(exportBulan));
+          const [y,m] = exportBulan.split("-");
+          const bn = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+          filename = "rekap_ugd_"+bn[parseInt(m)]+"_"+y+".csv";
+        } else {
+          filtered = transactions.filter(tx=>tx.date&&tx.date>=exportFrom&&tx.date<=exportTo);
+          filename = "rekap_ugd_"+exportFrom+"_sd_"+exportTo+".csv";
+        }
+        if(filtered.length===0) { alert("Tidak ada transaksi pada periode yang dipilih."); return; }
+        const masuk=filtered.filter(t=>t.type==="masuk");
+        const keluar=filtered.filter(t=>t.type==="keluar");
+        let csv = "REKAP TRANSAKSI UGD PUSKESMAS L. TUPABBIRING\n";
+        csv += exportMode==="bulan" ? "Periode: "+exportBulan+"\n" : "Periode: "+exportFrom+" s/d "+exportTo+"\n";
+        csv += "Total Transaksi: "+filtered.length+" (Masuk: "+masuk.length+" | Keluar: "+keluar.length+")\n";
+        csv += "Diekspor: "+new Date().toLocaleString("id-ID")+"\n\n";
+        csv += "No,Tanggal,Item,Tipe,Jumlah,Keterangan,Petugas\n";
+        filtered.sort((a,b)=>a.date>b.date?1:-1).forEach((tx,idx)=>{
+          csv += (idx+1)+","+tx.date+",\""+tx.itemName+"\","+(tx.type==="masuk"?"Masuk":"Keluar")+","+tx.qty+",\""+(tx.note||"")+"\",\""+tx.operator+"\"\n";
+        });
+        setExportCSV(csv); setExportFilename(filename);
+        try {
+          const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href=url; a.download=filename;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch(e) {
+          try {
+            const a = document.createElement("a");
+            a.href = "data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+            a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          } catch(e2) {}
+        }
+      }
+
+      function handleCopyCSV() {
+        if(navigator.clipboard) {
+          navigator.clipboard.writeText(exportCSV).then(()=>alert("Data berhasil disalin ke clipboard!"));
+        } else {
+          const ta = document.createElement("textarea"); ta.value=exportCSV;
+          document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+          document.body.removeChild(ta); alert("Data berhasil disalin ke clipboard!");
+        }
+      }
+
+      const searchFilteredItems = useMemo(()=>{
+        if(!itemSearch) return items;
+        return items.filter(i=>i.name.toLowerCase().includes(itemSearch.toLowerCase()));
+      },[items,itemSearch]);
+
+      useEffect(()=>{
+        function handleClickOutside(e) {
+          if(itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) setShowItemDropdown(false);
+        }
+        document.addEventListener("mousedown",handleClickOutside);
+        return ()=>document.removeEventListener("mousedown",handleClickOutside);
+      },[]);
+
+      function selectItem(item) {
+        setFormTx(prev=>({...prev,itemId:item.id}));
+        setItemSearch(item.name);
+        setShowItemDropdown(false);
+      }
+
+      const lowStockItems = useMemo(()=>items.filter(i=>i.stock<=i.minStock),[items]);
+      const criticalLowStock = useMemo(()=>lowStockItems.filter(i=>i.kritis),[lowStockItems]);
+      const regularLowStock = useMemo(()=>lowStockItems.filter(i=>!i.kritis),[lowStockItems]);
+      const totalStock = items.reduce((s,i)=>s+i.stock,0);
+      const todayTx = transactions.filter(t=>t.date===todayStr());
+      const filteredItems = useMemo(()=>items.filter(i=>{
+        return i.name.toLowerCase().includes(search.toLowerCase()) && (filterCat==="Semua"||i.category===filterCat) && (filterKritis==="semua"||(filterKritis==="kritis"&&i.kritis)||(filterKritis==="non-kritis"&&!i.kritis));
+      }),[items,search,filterCat,filterKritis]);
+      const filteredTx = useMemo(()=>transactions.filter(t=>{
+        return ((t.itemName||"").toLowerCase().includes(txSearch.toLowerCase())||(t.note||"").toLowerCase().includes(txSearch.toLowerCase())) && (filterType==="semua"||t.type===filterType);
+      }),[transactions,txSearch,filterType]);
+
+      if(syncStatus==="not_configured") return (
+        <div className="app">
+          <div className="header"><div className="header-logo">+</div><div><div className="header-title">UGD Puskesmas L. Tupabbiring</div><div className="header-sub">2026 · Kab. Pangkep</div></div></div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",padding:40,textAlign:"center"}}>
+            <div style={{fontSize:48,marginBottom:20}}>⚙️</div>
+            <h2 style={{marginBottom:12}}>Konfigurasi Firebase Diperlukan</h2>
+            <p style={{color:"var(--text2)",maxWidth:500,lineHeight:1.7,marginBottom:24}}>Buka file <code style={{background:"var(--bg3)",padding:"2px 8px",borderRadius:4}}>index.html</code>, cari bagian <code style={{background:"var(--bg3)",padding:"2px 8px",borderRadius:4}}>firebaseConfig</code>, lalu ganti dengan konfigurasi dari Firebase Console Anda.</p>
+            <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:20,textAlign:"left",maxWidth:500,width:"100%",fontSize:13,lineHeight:1.8,color:"var(--text2)"}}>
+              <div style={{fontWeight:600,color:"var(--text)",marginBottom:8}}>Langkah singkat:</div>
+              1. Buka <a href="https://console.firebase.google.com" target="_blank" style={{color:"var(--accent)"}}>console.firebase.google.com</a><br/>
+              2. Buat project → buat Firestore Database<br/>
+              3. Ambil konfigurasi dari Project Settings → Web app<br/>
+              4. Ganti nilai firebaseConfig di file ini<br/>
+              5. Upload ulang ke GitHub Pages<br/><br/>
+              <div style={{fontSize:12,color:"var(--text3)"}}>📖 Lihat PANDUAN-FIREBASE.md untuk instruksi lengkap</div>
+            </div>
+          </div>
+        </div>
+      );
+
+      if(loading) return (
+        <div className="app">
+          <div className="header"><div className="header-logo">+</div><div><div className="header-title">UGD Puskesmas L. Tupabbiring</div><div className="header-sub">2026 · Kab. Pangkep</div></div></div>
+          <div className="loading-screen"><div className="spinner"></div><div>Menghubungkan ke database...</div></div>
+        </div>
+      );
+
+      const SyncBadge = () => {
+        const c = syncStatus==="online"?"sync-online":"sync-offline";
+        const d = syncStatus==="online"?"online":"offline";
+        const l = syncStatus==="online"?"Real-time":"Offline";
+        return <div className={"sync-badge "+c}><div className={"sync-dot "+d}/>{l}</div>;
+      };
+
+      return (
+        <div className="app">
+          <div className="header">
+            <div className="header-logo">+</div>
+            <div><div className="header-title">UGD Puskesmas L. Tupabbiring</div><div className="header-sub">2026 · Kab. Pangkep</div></div>
+            <div className="header-right"><SyncBadge/></div>
+          </div>
+          <div className="main-area">
+            <div className="sidebar">
+              <button className={"nav-btn "+(page==="dashboard"?"active":"")} onClick={()=>setPage("dashboard")}><Icon type="home" size={18}/> Dashboard</button>
+              <button className={"nav-btn "+(page==="stok"?"active":"")} onClick={()=>setPage("stok")}><Icon type="package" size={18}/> Data Stok {lowStockItems.length>0&&<span className="badge">{lowStockItems.length}</span>}</button>
+              <button className={"nav-btn "+(page==="transaksi"?"active":"")} onClick={()=>setPage("transaksi")}><Icon type="clock" size={18}/> Transaksi</button>
+            </div>
+            <div className="content">
+
+              {page==="dashboard" && <>
+                <h1 className="page-title">Dashboard UGD</h1>
+                <p className="page-sub">Puskesmas Liukang Tupabbiring, Kab. Pangkep — {formatDate(todayStr())}</p>
+                <div className="info-banner green"><Icon type="wifi" size={16}/> Data tersinkronisasi real-time ke semua perangkat petugas UGD.</div>
+                <div className="stats-row">
+                  <div className="stat-card"><div className="stat-label">Total Jenis Item</div><div className="stat-value blue">{items.length}</div></div>
+                  <div className="stat-card"><div className="stat-label">Total Stok</div><div className="stat-value green">{totalStock.toLocaleString("id-ID")}</div></div>
+                  <div className="stat-card"><div className="stat-label">Transaksi Hari Ini</div><div className="stat-value orange">{todayTx.length}</div></div>
+                  <div className="stat-card"><div className="stat-label">Stok Menipis</div><div className="stat-value red">{criticalLowStock.length > 0 ? criticalLowStock.length + " kritis · " : ""}{lowStockItems.length}</div></div>
+                </div>
+                <div className="quick-actions">
+                  <button className="quick-btn" onClick={()=>{setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""});setItemSearch("");setShowItemDropdown(false);setEditTx(null);setShowModal("addTx");}}>
+                    <div className="icon-wrap" style={{background:"var(--green-bg)",color:"var(--green)"}}><Icon type="arrowDown" size={22}/></div>
+                    <div><div className="qb-title">Barang Masuk</div><div className="qb-sub">Catat penerimaan obat/bahan</div></div>
+                  </button>
+                  <button className="quick-btn" onClick={()=>{setFormTx({itemId:"",type:"keluar",qty:"",date:todayStr(),note:"",operator:""});setItemSearch("");setShowItemDropdown(false);setEditTx(null);setShowModal("addTx");}}>
+                    <div className="icon-wrap" style={{background:"var(--orange-bg)",color:"var(--orange)"}}><Icon type="arrowUp" size={22}/></div>
+                    <div><div className="qb-title">Barang Keluar</div><div className="qb-sub">Catat pengeluaran obat/bahan</div></div>
+                  </button>
+                  <button className="quick-btn" onClick={()=>{setEditItem(null);setFormItem({name:"",category:"Obat",unit:"tablet",stock:"",minStock:"",kritis:false});setShowModal("addItem");}}>
+                    <div className="icon-wrap" style={{background:"var(--blue-bg)",color:"var(--blue)"}}><Icon type="plus" size={22}/></div>
+                    <div><div className="qb-title">Tambah Item</div><div className="qb-sub">Daftarkan obat/bahan baru</div></div>
+                  </button>
+                  <button className="quick-btn" onClick={()=>setShowExport(true)}>
+                    <div className="icon-wrap" style={{background:"rgba(168,85,247,0.08)",color:"#a855f7"}}><Icon type="download" size={22}/></div>
+                    <div><div className="qb-title">Download Rekap</div><div className="qb-sub">Ekspor transaksi per bulan/tanggal</div></div>
+                  </button>
+                </div>
+                {criticalLowStock.length>0 && <>
+                  <div className="section-title"><div className="dot" style={{background:"var(--red)",animation:"pulse 1s infinite"}}/> <span style={{color:"var(--red)"}}>KRITIS — Obat & Bahan Emergency Menipis</span></div>
+                  {criticalLowStock.map(it=><div key={it.id} className="critical-stock-card"><div><div className="critical-stock-name">{it.name}</div><div className="low-stock-detail">{it.category} · Min: {it.minStock} {it.unit}</div></div><div style={{textAlign:"right"}}><div className="critical-stock-count">{it.stock}</div><div style={{fontSize:11,color:"var(--text3)"}}>{it.unit}</div></div></div>)}
+                </>}
+                {regularLowStock.length>0 && <>
+                  <div className="section-title" style={{marginTop:criticalLowStock.length>0?20:0}}><div className="dot" style={{background:"var(--orange)"}}/> Peringatan Stok Menipis</div>
+                  {regularLowStock.map(it=><div key={it.id} className="low-stock-card"><div><div className="low-stock-name">{it.name}</div><div className="low-stock-detail">{it.category} · Min: {it.minStock} {it.unit}</div></div><div style={{textAlign:"right"}}><div className="low-stock-count">{it.stock}</div><div style={{fontSize:11,color:"var(--text3)"}}>{it.unit}</div></div></div>)}
+                </>}
+                <div className="recent-tx"><div className="recent-tx-header"><div className="section-title" style={{margin:0}}><div className="dot" style={{background:"var(--accent)"}}/> Transaksi Terakhir</div></div>
+                  <table><thead><tr><th>Tanggal</th><th>Item</th><th>Tipe</th><th>Jumlah</th><th>Keterangan</th><th>Petugas</th><th>Aksi</th></tr></thead>
+                  <tbody>{transactions.slice(0,5).map(tx=><tr key={tx.id}><td style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{formatDate(tx.date)}</td><td style={{fontWeight:500}}>{tx.itemName}</td><td><span className={"tag tag-"+tx.type}>{tx.type==="masuk"?"↓ Masuk":"↑ Keluar"}</span></td><td style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{tx.qty}</td><td style={{color:"var(--text2)"}}>{tx.note||"-"}</td><td>{tx.operator}</td><td><button className="btn btn-ghost btn-sm" onClick={()=>openEditTx(tx)}><Icon type="edit" size={14}/></button></td></tr>)}
+                  {transactions.length===0&&<tr><td colSpan={7} style={{textAlign:"center",padding:30,color:"var(--text3)"}}>Belum ada transaksi</td></tr>}</tbody></table>
+                </div>
+              </>}
+
+              {page==="stok" && <>
+                <h1 className="page-title">Data Stok</h1><p className="page-sub">Daftar seluruh obat dan bahan medis di UGD</p>
+                <div className="toolbar">
+                  <div className="search-box"><Icon type="search" size={16}/><input placeholder="Cari nama obat/bahan..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+                  <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} className="select-box"><option value="Semua">Semua Kategori</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select>
+                  <select value={filterKritis} onChange={e=>setFilterKritis(e.target.value)} className="select-box"><option value="semua">Semua Status</option><option value="kritis">⚠ Kritis Saja</option><option value="non-kritis">Non-Kritis Saja</option></select>
+                  <button className="btn btn-primary" onClick={()=>{setEditItem(null);setFormItem({name:"",category:"Obat",unit:"tablet",stock:"",minStock:"",kritis:false});setShowModal("addItem");}}><Icon type="plus" size={16}/> Tambah Item</button>
+                </div>
+                <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius)",overflow:"hidden"}}>
+                  <table><thead><tr><th>Nama</th><th>Kategori</th><th>Status</th><th>Stok</th><th>Min. Stok</th><th>Aksi</th></tr></thead>
+                  <tbody>{filteredItems.length===0?<tr><td colSpan={6} style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Tidak ada data</td></tr>:filteredItems.map(item=><tr key={item.id}><td style={{fontWeight:600}}>{item.name}</td><td><span className="tag tag-cat">{item.category}</span></td><td><button className={"kritis-badge"+(item.kritis?" active":"")} onClick={()=>toggleKritis(item)}>{item.kritis?"⚠ KRITIS":"—"}</button></td><td>{item.stock<=item.minStock?<span className="stock-warn"><Icon type="alert" size={14}/> {item.stock}</span>:<span className="stock-ok">{item.stock}</span>}</td><td style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--text2)"}}>{item.minStock}</td><td><div className="actions"><button className="btn btn-ghost btn-sm" onClick={()=>openEditItem(item)}><Icon type="edit" size={14}/></button><button className="btn btn-danger btn-sm" onClick={()=>handleDeleteItem(item.id)}><Icon type="trash" size={14}/></button></div></td></tr>)}</tbody></table>
+                </div>
+              </>}
+
+              {page==="transaksi" && <>
+                <h1 className="page-title">Riwayat Transaksi</h1><p className="page-sub">Catatan seluruh barang masuk dan keluar UGD</p>
+                <div className="toolbar">
+                  <div className="search-box"><Icon type="search" size={16}/><input placeholder="Cari item atau keterangan..." value={txSearch} onChange={e=>setTxSearch(e.target.value)}/></div>
+                  <select value={filterType} onChange={e=>setFilterType(e.target.value)} className="select-box"><option value="semua">Semua Tipe</option><option value="masuk">Masuk</option><option value="keluar">Keluar</option></select>
+                  <button className="btn btn-masuk" onClick={()=>{setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""});setItemSearch("");setShowItemDropdown(false);setEditTx(null);setShowModal("addTx");}}><Icon type="arrowDown" size={16}/> Masuk</button>
+                  <button className="btn btn-keluar" onClick={()=>{setFormTx({itemId:"",type:"keluar",qty:"",date:todayStr(),note:"",operator:""});setItemSearch("");setShowItemDropdown(false);setEditTx(null);setShowModal("addTx");}}><Icon type="arrowUp" size={16}/> Keluar</button>
+                  <button className="btn btn-ghost" onClick={()=>setShowExport(true)} style={{color:"#a855f7",borderColor:"rgba(168,85,247,0.3)"}}><Icon type="download" size={16}/> Download Rekap</button>
+                </div>
+                <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius)",overflow:"hidden"}}>
+                  <table><thead><tr><th>Tanggal</th><th>Item</th><th>Tipe</th><th>Jumlah</th><th>Keterangan</th><th>Petugas</th><th>Aksi</th></tr></thead>
+                  <tbody>{filteredTx.length===0?<tr><td colSpan={7} style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Tidak ada transaksi</td></tr>:filteredTx.map(tx=><tr key={tx.id}><td style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{formatDate(tx.date)}</td><td style={{fontWeight:500}}>{tx.itemName}</td><td><span className={"tag tag-"+tx.type}>{tx.type==="masuk"?"↓ Masuk":"↑ Keluar"}</span></td><td style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{tx.qty}</td><td style={{color:"var(--text2)"}}>{tx.note||"-"}</td><td>{tx.operator}</td><td><button className="btn btn-ghost btn-sm" onClick={()=>openEditTx(tx)}><Icon type="edit" size={14}/></button></td></tr>)}</tbody></table>
+                </div>
+              </>}
+            </div>
+          </div>
+
+          <div className="mobile-nav"><div className="mobile-nav-inner">
+            <button className={"mobile-nav-btn "+(page==="dashboard"?"active":"")} onClick={()=>setPage("dashboard")}><Icon type="home" size={20}/> Home</button>
+            <button className={"mobile-nav-btn "+(page==="stok"?"active":"")} onClick={()=>setPage("stok")}><Icon type="package" size={20}/> Stok</button>
+            <button className={"mobile-nav-btn "+(page==="transaksi"?"active":"")} onClick={()=>setPage("transaksi")}><Icon type="clock" size={20}/> Transaksi</button>
+          </div></div>
+
+          {(showModal==="addItem"||showModal==="editItem") && <Modal title={editItem?"Edit Item":"Tambah Item Baru"} onClose={()=>{setShowModal(null);setEditItem(null);setFormError("");}}>
+            {formError && <div className="form-error">{formError}</div>}
+            <div className="form-group"><label className="form-label">Nama Item</label><input className="form-input" placeholder="Contoh: Paracetamol 500mg" value={formItem.name} onChange={e=>setFormItem({...formItem,name:e.target.value})}/></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Kategori</label><select className="form-input" value={formItem.category} onChange={e=>setFormItem({...formItem,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              <div className="form-group"><label className="form-label">Satuan</label><select className="form-input" value={formItem.unit} onChange={e=>setFormItem({...formItem,unit:e.target.value})}>{UNITS.map(u=><option key={u} value={u}>{u}</option>)}</select></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">{editItem?"Stok Saat Ini":"Stok Awal"}</label><input className="form-input" type="number" min="0" value={formItem.stock} onChange={e=>setFormItem({...formItem,stock:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Minimum Stok</label><input className="form-input" type="number" min="0" value={formItem.minStock} onChange={e=>setFormItem({...formItem,minStock:e.target.value})}/></div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Prioritas</label>
+              <div className={"kritis-toggle"+(formItem.kritis?" active":"")} onClick={()=>setFormItem({...formItem,kritis:!formItem.kritis})}>
+                <div className={"kritis-check"+(formItem.kritis?" checked":"")}>
+                  {formItem.kritis&&<Icon type="check" size={14}/>}
+                </div>
+                <div>
+                  <div className="kritis-label" style={formItem.kritis?{color:"var(--red)"}:{}}>Obat / Bahan Kritis (Emergency)</div>
+                  <div className="kritis-sub">Tandai jika item ini penting untuk penanganan darurat</div>
+                </div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+              <button className="btn btn-ghost" onClick={()=>{setShowModal(null);setEditItem(null);setFormError("");}}>Batal</button>
+              <button className="btn btn-primary" onClick={handleAddItem}><Icon type="check" size={16}/> {editItem?"Simpan":"Tambah"}</button>
+            </div>
+          </Modal>}
+
+          {showModal==="addTx" && <Modal title={editTx?"Edit Transaksi":(formTx.type==="masuk"?"Catat Barang Masuk":"Catat Barang Keluar")} onClose={()=>{setShowModal(null);setEditTx(null);setFormError("");}}>
+            {formError && <div className="form-error">{formError}</div>}
+            <div className="form-group"><label className="form-label">Tipe Transaksi</label>
+              <div style={{display:"flex",gap:8}}>
+                <button className={"btn "+(formTx.type==="masuk"?"btn-masuk":"btn-ghost")} style={{flex:1}} onClick={()=>setFormTx({...formTx,type:"masuk"})}><Icon type="arrowDown" size={16}/> Masuk</button>
+                <button className={"btn "+(formTx.type==="keluar"?"btn-keluar":"btn-ghost")} style={{flex:1}} onClick={()=>setFormTx({...formTx,type:"keluar"})}><Icon type="arrowUp" size={16}/> Keluar</button>
+              </div>
+            </div>
+            <div className="form-group" ref={itemDropdownRef} style={{position:"relative"}}><label className="form-label">Pilih Item</label>
+              <div style={{position:"relative"}}>
+                <input className="form-input" style={{paddingLeft:"36px"}} placeholder="Ketik nama obat/bahan untuk mencari..." value={itemSearch} onChange={e=>{setItemSearch(e.target.value);setShowItemDropdown(true);if(!e.target.value)setFormTx(prev=>({...prev,itemId:""}));}} onFocus={()=>setShowItemDropdown(true)}/>
+                <span style={{position:"absolute",left:12,top:11,color:"var(--text3)"}}><Icon type="search" size={16}/></span>
+              </div>
+              {showItemDropdown && (
+                <div className="item-dropdown">
+                  {searchFilteredItems.length===0 ? (
+                    <div className="item-dropdown-empty">Tidak ditemukan</div>
+                  ) : searchFilteredItems.slice(0,50).map(i=>(
+                    <div key={i.id} className={"item-dropdown-row"+(formTx.itemId===i.id?" selected":"")} onClick={()=>selectItem(i)}>
+                      <div className="item-dropdown-name">{i.name}</div>
+                      <div className="item-dropdown-meta">
+                        <span className="tag tag-cat" style={{fontSize:10}}>{i.category}</span>
+                        <span style={{color:i.stock<=i.minStock&&i.stock>0?"var(--red)":i.stock===0?"var(--text3)":"var(--accent)",fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600}}>Stok: {i.stock} {i.unit}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {searchFilteredItems.length>50&&<div className="item-dropdown-empty">Menampilkan 50 dari {searchFilteredItems.length} item. Ketik lebih spesifik...</div>}
+                </div>
+              )}
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Jumlah</label><input className="form-input" type="number" min="1" value={formTx.qty} onChange={e=>setFormTx({...formTx,qty:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Tanggal</label><input className="form-input" type="date" value={formTx.date} onChange={e=>setFormTx({...formTx,date:e.target.value})}/></div>
+            </div>
+            <div className="form-group"><label className="form-label">Petugas</label><input className="form-input" placeholder="Nama perawat/petugas" value={formTx.operator} onChange={e=>setFormTx({...formTx,operator:e.target.value})}/></div>
+            <div className="form-group"><label className="form-label">Keterangan</label><input className="form-input" placeholder="Contoh: Dari Farmasi / Pasien IGD-001" value={formTx.note} onChange={e=>setFormTx({...formTx,note:e.target.value})}/></div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+              <button className="btn btn-ghost" onClick={()=>{setShowModal(null);setEditTx(null);setFormError("");}}>Batal</button>
+              <button className="btn btn-primary" onClick={handleAddTx}><Icon type="check" size={16}/> {editTx?"Simpan Perubahan":"Simpan"}</button>
+            </div>
+          </Modal>}
+
+          {showExport && <Modal title="Download Rekap Transaksi" onClose={()=>{setShowExport(false);setExportCSV("");}}>
+            {!exportCSV ? (<>
+            <div className="form-group">
+              <label className="form-label">Pilih Periode</label>
+              <div style={{display:"flex",gap:8}}>
+                <button className={"btn "+(exportMode==="bulan"?"btn-primary":"btn-ghost")} style={{flex:1}} onClick={()=>setExportMode("bulan")}>Per Bulan</button>
+                <button className={"btn "+(exportMode==="rentang"?"btn-primary":"btn-ghost")} style={{flex:1}} onClick={()=>setExportMode("rentang")}>Rentang Tanggal</button>
+              </div>
+            </div>
+            {exportMode==="bulan" ? (
+              <div className="form-group"><label className="form-label">Bulan</label><input className="form-input" type="month" value={exportBulan} onChange={e=>setExportBulan(e.target.value)}/></div>
+            ) : (
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Dari Tanggal</label><input className="form-input" type="date" value={exportFrom} onChange={e=>setExportFrom(e.target.value)}/></div>
+                <div className="form-group"><label className="form-label">Sampai Tanggal</label><input className="form-input" type="date" value={exportTo} onChange={e=>setExportTo(e.target.value)}/></div>
+              </div>
+            )}
+            <div className="export-preview">
+              <div className="export-preview-label">Preview:</div>
+              <div className="export-preview-count">
+                {(()=>{
+                  const f = exportMode==="bulan" ? transactions.filter(tx=>tx.date&&tx.date.startsWith(exportBulan)) : transactions.filter(tx=>tx.date&&tx.date>=exportFrom&&tx.date<=exportTo);
+                  const m=f.filter(t=>t.type==="masuk"); const k=f.filter(t=>t.type==="keluar");
+                  return f.length===0 ? <span style={{color:"var(--text3)"}}>Tidak ada transaksi pada periode ini</span>
+                    : <><span style={{fontSize:22,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{f.length}</span> transaksi <span className="tag tag-masuk" style={{marginLeft:6}}>↓ {m.length} masuk</span> <span className="tag tag-keluar" style={{marginLeft:4}}>↑ {k.length} keluar</span></>;
+                })()}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn btn-ghost" onClick={()=>setShowExport(false)}>Batal</button>
+              <button className="btn btn-primary" onClick={handleFilteredExport}><Icon type="download" size={16}/> Download CSV</button>
+            </div>
+            </>) : (<>
+              <div className="info-banner green">
+                <Icon type="check" size={16}/> Rekap berhasil dibuat! Jika file tidak otomatis terdownload, salin data di bawah lalu paste ke Notepad/Excel.
+              </div>
+              <div className="form-group">
+                <label className="form-label">Nama File: {exportFilename}</label>
+                <textarea className="form-input" style={{height:180,fontFamily:"'JetBrains Mono',monospace",fontSize:11,resize:"vertical"}} readOnly value={exportCSV}/>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button className="btn btn-ghost" onClick={()=>setExportCSV("")}>← Kembali</button>
+                <button className="btn btn-primary" onClick={handleCopyCSV}><Icon type="check" size={16}/> Salin ke Clipboard</button>
+              </div>
+            </>)}
+          </Modal>}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
