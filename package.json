@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
     "seed": "node scripts/seed.mjs",
-    "icons": "pwa-assets-generator"
+    "icons": "pwa-assets-generator",
+    "backup": "node scripts/backup.mjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",
