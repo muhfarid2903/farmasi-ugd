@@ -16,12 +16,12 @@ export function TxTable({ transactions, canVoid, onVoid, emptyText }: TxTablePro
         <thead>
           <tr>
             <th>Tanggal</th>
-            <th>Item</th>
-            <th>Tipe</th>
+            <th>Barang</th>
+            <th>Masuk/Keluar</th>
             <th>Jumlah</th>
             <th>Keterangan</th>
             <th>Petugas</th>
-            <th>Aksi</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -34,25 +34,20 @@ export function TxTable({ transactions, canVoid, onVoid, emptyText }: TxTablePro
           ) : (
             transactions.map((tx) => (
               <tr key={tx.id} className={tx.voidedBy ? "tx-voided" : undefined}>
-                <td className="mono small">{formatDate(tx.date)}</td>
+                <td className="small">{formatDate(tx.date)}</td>
                 <td className="medium">{tx.itemName}</td>
                 <td>
                   <span className={`tag tag-${tx.type}`}>{tx.type === "masuk" ? "↓ Masuk" : "↑ Keluar"}</span>
                   {tx.voidedBy && <span className="tag tag-void">Dibatalkan</span>}
                   {tx.voidsTxId && <span className="tag tag-void">Pembatalan</span>}
                 </td>
-                <td className="mono bold">{tx.qty}</td>
+                <td className="bold">{tx.qty}</td>
                 <td className="muted">{tx.note || "-"}</td>
                 <td>{tx.operator}</td>
                 <td>
                   {canVoid(tx) && (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => onVoid(tx)}
-                      title="Batalkan transaksi ini"
-                      aria-label="Batalkan transaksi"
-                    >
-                      <Icon type="undo" size={14} />
+                    <button className="btn btn-ghost btn-sm" onClick={() => onVoid(tx)}>
+                      <Icon type="undo" size={16} /> Batalkan
                     </button>
                   )}
                 </td>

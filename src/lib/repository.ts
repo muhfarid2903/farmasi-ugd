@@ -84,17 +84,18 @@ export async function deleteItem(id: string): Promise<void> {
  * - dua perangkat yang menyimpan bersamaan tidak saling menimpa stok.
  * `lastTxId` dipakai aturan keamanan untuk memastikan stok hanya berubah lewat transaksi.
  *
- * Jika `voids` diisi, transaksi asli ikut ditandai sudah dibatalkan.
+ * Jika `voidsTxId` diisi, transaksi asli ikut ditandai sudah dibatalkan.
+ * Mengembalikan id transaksi baru (langsung, tanpa menunggu server) dan Promise penyimpanannya.
  * Tidak perlu menunggu Promise-nya: saat offline, Promise baru selesai setelah tersinkron,
  * padahal perubahan sudah langsung berlaku di cache lokal.
  */
-export function saveTransaction(data: TxData): Promise<void> {
+export function saveTransaction(data: TxData): { id: string; done: Promise<void> } {
   const batch = writeBatch(db);
   const txRef = doc(txCol);
   batch.set(txRef, { ...data, createdAt: nowISO() });
   batch.update(doc(itemsCol, data.itemId), { stock: increment(stockDelta(data.type, data.qty)), lastTxId: txRef.id });
   if (data.voidsTxId) batch.update(doc(txCol, data.voidsTxId), { voidedBy: txRef.id });
-  return batch.commit();
+  return { id: txRef.id, done: batch.commit() };
 }
 
 export function subscribeProfile(

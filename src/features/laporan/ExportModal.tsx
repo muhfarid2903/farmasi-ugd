@@ -27,7 +27,7 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
   const masukCount = filtered.filter((t) => t.type === "masuk").length;
 
   function handleDownload() {
-    if (filtered.length === 0) return notify("Tidak ada transaksi pada periode yang dipilih.", "error");
+    if (filtered.length === 0) return notify("Tidak ada catatan pada waktu yang dipilih.", "error");
     const label = mode === "bulan" ? monthLabel(month) : `${from} s/d ${to}`;
     const name =
       mode === "bulan" ? `rekap_ugd_${monthLabel(month).replace(" ", "_")}.csv` : `rekap_ugd_${from}_sd_${to}.csv`;
@@ -51,23 +51,23 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
   }
 
   return (
-    <Modal title="Download Rekap Transaksi" onClose={onClose}>
+    <Modal title="Unduh Laporan" onClose={onClose}>
       {!csv ? (
         <>
           <div className="form-group">
-            <label className="form-label">Pilih Periode</label>
+            <label className="form-label">Laporan untuk</label>
             <div className="btn-group">
               <button
                 className={`btn ${mode === "bulan" ? "btn-primary" : "btn-ghost"}`}
                 onClick={() => setMode("bulan")}
               >
-                Per Bulan
+                Satu bulan
               </button>
               <button
                 className={`btn ${mode === "rentang" ? "btn-primary" : "btn-ghost"}`}
                 onClick={() => setMode("rentang")}
               >
-                Rentang Tanggal
+                Pilih tanggal
               </button>
             </div>
           </div>
@@ -113,13 +113,13 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
             </div>
           )}
           <div className="export-preview">
-            <div className="export-preview-label">Preview:</div>
+            <div className="export-preview-label">Isi laporan:</div>
             <div className="export-preview-count">
               {filtered.length === 0 ? (
-                <span className="text-faint">Tidak ada transaksi pada periode ini</span>
+                <span className="text-faint">Tidak ada catatan pada waktu ini</span>
               ) : (
                 <>
-                  <span className="export-preview-number">{filtered.length}</span> transaksi{" "}
+                  <span className="export-preview-number">{filtered.length}</span> catatan{" "}
                   <span className="tag tag-masuk">↓ {masukCount} masuk</span>{" "}
                   <span className="tag tag-keluar">↑ {filtered.length - masukCount} keluar</span>
                 </>
@@ -131,15 +131,15 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
               Batal
             </button>
             <button className="btn btn-primary" onClick={handleDownload}>
-              <Icon type="download" size={16} /> Download CSV
+              <Icon type="download" size={18} /> Unduh File Excel
             </button>
           </div>
         </>
       ) : (
         <>
           <div className="info-banner green">
-            <Icon type="check" size={16} /> Rekap berhasil dibuat! Jika file tidak otomatis terdownload, salin data di
-            bawah lalu paste ke Notepad/Excel.
+            <Icon type="check" size={16} /> Laporan sudah dibuat dan diunduh. Buka file-nya dengan Excel. Kalau file
+            tidak muncul, salin isi di bawah lalu tempel ke Excel.
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="exp-csv">

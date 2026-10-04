@@ -69,7 +69,7 @@ export interface UserProfile {
   createdAt?: string;
 }
 
-export type Page = "dashboard" | "stok" | "transaksi" | "petugas";
+export type Page = "beranda" | "stok" | "riwayat" | "petugas";
 
 /** online = tersambung; pending = ada perubahan lokal belum terkirim; offline = memakai cache lokal. */
 export type SyncStatus = "loading" | "online" | "pending" | "offline";

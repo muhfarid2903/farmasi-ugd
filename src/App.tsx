@@ -1,21 +1,23 @@
 import { useCallback, useState } from "react";
+import { FontSizeModal } from "./components/FontSizeModal";
 import { Header } from "./components/Header";
 import { Icon, type IconName } from "./components/Icon";
 import { SyncBadge } from "./components/SyncBadge";
 import { Toast, type ToastMessage } from "./components/Toast";
-import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { BerandaPage } from "./features/beranda/BerandaPage";
 import { ExportModal } from "./features/laporan/ExportModal";
 import { PetugasPage } from "./features/petugas/PetugasPage";
 import { ItemFormModal } from "./features/stok/ItemFormModal";
 import { StokPage } from "./features/stok/StokPage";
 import { TransaksiPage } from "./features/transaksi/TransaksiPage";
-import { TxFormModal } from "./features/transaksi/TxFormModal";
+import { TxWizard, type NewTx } from "./features/transaksi/TxWizard";
 import { VoidTxModal } from "./features/transaksi/VoidTxModal";
 import { logout } from "./hooks/useAuth";
+import { useFontScale } from "./hooks/useFontScale";
 import { useInventory } from "./hooks/useInventory";
-import { todayStr } from "./lib/date";
+import { nowISO, todayStr } from "./lib/date";
 import * as repo from "./lib/repository";
-import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type TxData } from "./lib/stock";
+import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData } from "./lib/stock";
 import type { Item, Page, Transaction, TxType, UserProfile } from "./types";
 
 type ModalState =
@@ -23,20 +25,22 @@ type ModalState =
   | { kind: "void"; tx: Transaction }
   | { kind: "item"; editItem?: Item }
   | { kind: "export" }
+  | { kind: "font" }
   | null;
 
-const NAV: { page: Page; label: string; short: string; icon: IconName; adminOnly?: boolean }[] = [
-  { page: "dashboard", label: "Dashboard", short: "Home", icon: "home" },
-  { page: "stok", label: "Data Stok", short: "Stok", icon: "package" },
-  { page: "transaksi", label: "Transaksi", short: "Transaksi", icon: "clock" },
-  { page: "petugas", label: "Petugas", short: "Petugas", icon: "users", adminOnly: true },
+const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] = [
+  { page: "beranda", label: "Beranda", icon: "home" },
+  { page: "stok", label: "Stok", icon: "package" },
+  { page: "riwayat", label: "Riwayat", icon: "clock" },
+  { page: "petugas", label: "Petugas", icon: "users", adminOnly: true },
 ];
 
 export default function App({ profile }: { profile: UserProfile }) {
   const { items, transactions, loading, syncStatus, error } = useInventory();
-  const [page, setPage] = useState<Page>("dashboard");
+  const [page, setPage] = useState<Page>("beranda");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [fontScale, setFontScale] = useFontScale();
   const isAdmin = profile.role === "admin";
   const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
 
@@ -46,30 +50,48 @@ export default function App({ profile }: { profile: UserProfile }) {
   const clearToast = useCallback(() => setToast(null), []);
   const closeModal = useCallback(() => setModal(null), []);
 
+  /** Kegagalan dari server (biasanya baru diketahui setelah ada sinyal) dilaporkan lewat pesan merah. */
+  const reportFailure = useCallback(
+    (promise: Promise<void>) =>
+      promise.catch((e: Error) => {
+        console.error(e);
+        notify(`Gagal menyimpan ke server. Periksa sinyal lalu coba lagi. (${e.message})`, "error");
+      }),
+    [notify],
+  );
+
   /**
    * Jalankan penulisan ke Firestore tanpa menunggu server. Perubahan langsung berlaku
-   * di cache lokal (juga saat offline); kegagalan dari server dilaporkan lewat toast.
+   * di cache lokal (juga saat offline).
    */
   const write = useCallback(
     (promise: Promise<void>, success: string) => {
-      notify(navigator.onLine ? success : `${success} (akan terkirim saat ada sinyal)`, "success");
-      promise.catch((e: Error) => {
-        console.error(e);
-        notify(`Gagal menyimpan ke server: ${e.message}`, "error");
-      });
+      notify(navigator.onLine ? success : `${success}. Akan terkirim saat ada sinyal.`, "success");
+      reportFailure(promise);
     },
-    [notify],
+    [notify, reportFailure],
   );
 
   const userCanVoid = useCallback((tx: Transaction) => canVoid(tx, profile), [profile]);
 
-  function handleSaveTx(data: Omit<TxData, "operator" | "email">) {
-    write(repo.saveTransaction({ ...data, operator: profile.name, email: profile.email }), "Transaksi tersimpan");
-    setModal(null);
+  function handleWizardSave(data: NewTx): string {
+    const { id, done } = repo.saveTransaction({ ...data, operator: profile.name, email: profile.email });
+    reportFailure(done);
+    return id;
+  }
+
+  /** Batalkan transaksi yang baru disimpan dari layar "Tersimpan". */
+  function handleWizardUndo(txId: string, data: NewTx): string | null {
+    const tx: Transaction = { ...data, id: txId, operator: profile.name, email: profile.email, createdAt: nowISO() };
+    const voidData = voidTxData(tx, profile, todayStr(), "Salah catat");
+    const blocked = validateStockChanges(stockChanges(voidData), items);
+    if (blocked) return blocked;
+    reportFailure(repo.saveTransaction(voidData).done);
+    return null;
   }
 
   function handleVoidTx(tx: Transaction, reason: string) {
-    write(repo.saveTransaction(voidTxData(tx, profile, todayStr(), reason)), "Transaksi dibatalkan");
+    write(repo.saveTransaction(voidTxData(tx, profile, todayStr(), reason)).done, "Catatan sudah dibatalkan");
     setModal(null);
   }
 
@@ -77,23 +99,28 @@ export default function App({ profile }: { profile: UserProfile }) {
     if (editItem) {
       // Stok hanya ditulis jika diubah, agar tidak menimpa transaksi dari perangkat lain
       const { stock, ...rest } = data;
-      write(repo.updateItem(editItem.id, stock === editItem.stock ? rest : data), "Item diperbarui");
+      write(repo.updateItem(editItem.id, stock === editItem.stock ? rest : data), "Data barang disimpan");
     } else {
-      write(repo.addItem(data), "Item ditambahkan");
+      write(repo.addItem(data), "Barang baru ditambahkan");
     }
     setModal(null);
   }
 
   function handleDeleteItem(item: Item) {
-    if (window.confirm(`Yakin hapus "${item.name}"?`)) write(repo.deleteItem(item.id), "Item dihapus");
+    if (window.confirm(`Hapus barang ini dari daftar?\n\n${item.name}\n\nRiwayat catatannya tetap tersimpan.`)) {
+      write(repo.deleteItem(item.id), "Barang dihapus");
+    }
   }
 
   function handleToggleKritis(item: Item) {
-    write(repo.updateItem(item.id, { kritis: !item.kritis }), item.kritis ? "Tanda kritis dilepas" : "Ditandai kritis");
+    write(
+      repo.updateItem(item.id, { kritis: !item.kritis }),
+      item.kritis ? "Tanda obat darurat dilepas" : "Ditandai sebagai obat darurat",
+    );
   }
 
   function handleSaveUser(user: UserProfile, isNew: boolean) {
-    write(repo.saveUser(user), isNew ? `${user.name} ditambahkan` : `${user.name} diperbarui`);
+    write(repo.saveUser(user), isNew ? `${user.name} ditambahkan` : `Data ${user.name} disimpan`);
   }
 
   const openNewTx = (type: TxType) => setModal({ kind: "tx", type });
@@ -107,7 +134,7 @@ export default function App({ profile }: { profile: UserProfile }) {
         <Header />
         <div className="loading-screen">
           <div className="spinner" />
-          <div>Menghubungkan ke database...</div>
+          <div>Membuka data...</div>
         </div>
       </div>
     );
@@ -122,39 +149,48 @@ export default function App({ profile }: { profile: UserProfile }) {
         right={
           <>
             <SyncBadge status={syncStatus} />
+            <button className="btn btn-ghost btn-sm" onClick={() => setModal({ kind: "font" })}>
+              Aa <span className="user-name">Ukuran huruf</span>
+            </button>
             <div className="user-chip" title={profile.email}>
               <span className="user-name">{profile.name}</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => logout()} aria-label="Keluar" title="Keluar">
-                <Icon type="logout" size={14} />
+              <button className="btn btn-ghost btn-sm" onClick={() => logout()}>
+                <Icon type="logout" size={16} /> Keluar
               </button>
             </div>
           </>
         }
       />
       <div className="main-area">
-        <nav className="sidebar">
+        <nav className="sidebar" aria-label="Menu utama">
           {nav.map((n) => (
             <button
               key={n.page}
               className={`nav-btn${page === n.page ? " active" : ""}`}
+              aria-current={page === n.page ? "page" : undefined}
               onClick={() => setPage(n.page)}
             >
-              <Icon type={n.icon} size={18} /> {n.label}
-              {n.page === "stok" && lowCount > 0 && <span className="badge">{lowCount}</span>}
+              <Icon type={n.icon} size={22} /> {n.label}
+              {n.page === "stok" && lowCount > 0 && (
+                <span className="badge" title={`${lowCount} barang hampir habis`}>
+                  {lowCount}
+                </span>
+              )}
             </button>
           ))}
         </nav>
         <main className="content">
-          {error && <div className="form-error">Gagal memuat data: {error}</div>}
-          {page === "dashboard" && (
-            <DashboardPage
+          {error && <div className="form-error">Data tidak bisa dibuka: {error}</div>}
+          {page === "beranda" && (
+            <BerandaPage
+              userName={profile.name}
               items={items}
               transactions={transactions}
               onNewTx={openNewTx}
-              canVoid={userCanVoid}
-              onVoidTx={openVoidTx}
-              onAddItem={isAdmin ? openAddItem : undefined}
+              onShowStock={() => setPage("stok")}
+              onShowHistory={() => setPage("riwayat")}
               onExport={openExport}
+              onAddItem={isAdmin ? openAddItem : undefined}
             />
           )}
           {page === "stok" && (
@@ -167,7 +203,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               onToggleKritis={handleToggleKritis}
             />
           )}
-          {page === "transaksi" && (
+          {page === "riwayat" && (
             <TransaksiPage
               transactions={transactions}
               onNewTx={openNewTx}
@@ -180,26 +216,29 @@ export default function App({ profile }: { profile: UserProfile }) {
         </main>
       </div>
 
-      <nav className="mobile-nav">
+      <nav className="mobile-nav" aria-label="Menu utama">
         <div className="mobile-nav-inner">
           {nav.map((n) => (
             <button
               key={n.page}
               className={`mobile-nav-btn${page === n.page ? " active" : ""}`}
+              aria-current={page === n.page ? "page" : undefined}
               onClick={() => setPage(n.page)}
             >
-              <Icon type={n.icon} size={20} /> {n.short}
+              <Icon type={n.icon} size={24} /> {n.label}
             </button>
           ))}
         </div>
       </nav>
 
       {modal?.kind === "tx" && (
-        <TxFormModal
+        <TxWizard
+          type={modal.type}
           items={items}
-          initialType={modal.type}
+          transactions={transactions}
           operatorName={profile.name}
-          onSubmit={handleSaveTx}
+          onSave={handleWizardSave}
+          onUndo={handleWizardUndo}
           onClose={closeModal}
         />
       )}
@@ -215,6 +254,7 @@ export default function App({ profile }: { profile: UserProfile }) {
         <ItemFormModal editItem={modal.editItem} onSubmit={handleSaveItem} onClose={closeModal} />
       )}
       {modal?.kind === "export" && <ExportModal transactions={transactions} onClose={closeModal} notify={notify} />}
+      {modal?.kind === "font" && <FontSizeModal scale={fontScale} onChange={setFontScale} onClose={closeModal} />}
 
       <Toast key={toast?.id} toast={toast} onDone={clearToast} />
     </div>

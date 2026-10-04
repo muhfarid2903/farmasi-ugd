@@ -17,7 +17,7 @@ export function VoidTxModal({ tx, blockedReason, onConfirm, onClose }: VoidTxMod
   const effect = tx.type === "masuk" ? "dikurangi" : "dikembalikan";
 
   return (
-    <Modal title="Batalkan Transaksi" onClose={onClose}>
+    <Modal title="Batalkan Catatan Ini?" onClose={onClose}>
       <div className="void-summary">
         <div className="semibold">{tx.itemName}</div>
         <div className="muted small">
@@ -25,13 +25,13 @@ export function VoidTxModal({ tx, blockedReason, onConfirm, onClose }: VoidTxMod
         </div>
       </div>
       <p className="void-explain">
-        Transaksi asli tetap tersimpan sebagai jejak, lalu dibuat transaksi pembatalan sehingga stok {effect} sebanyak{" "}
-        {tx.qty}. Setelah itu, catat ulang transaksi yang benar bila perlu.
+        Stok akan {effect} sebanyak {tx.qty}, seperti sebelum dicatat. Catatan aslinya tetap terlihat dengan tanda
+        &quot;Dibatalkan&quot;. Setelah ini, catat ulang dengan jumlah yang benar bila perlu.
       </p>
       {blockedReason && <div className="form-error">{blockedReason}</div>}
       <div className="form-group">
         <label className="form-label" htmlFor="void-reason">
-          Alasan (opsional)
+          Alasan (boleh dikosongkan)
         </label>
         <input
           id="void-reason"
@@ -43,10 +43,10 @@ export function VoidTxModal({ tx, blockedReason, onConfirm, onClose }: VoidTxMod
       </div>
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onClose}>
-          Kembali
+          Jangan batalkan
         </button>
         <button className="btn btn-danger" disabled={!!blockedReason} onClick={() => onConfirm(reason)}>
-          <Icon type="undo" size={16} /> Batalkan Transaksi
+          <Icon type="undo" size={18} /> Ya, batalkan
         </button>
       </div>
     </Modal>

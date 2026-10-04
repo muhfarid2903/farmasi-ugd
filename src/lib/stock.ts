@@ -61,8 +61,10 @@ export function voidTxData(
 export function validateStockChanges(changes: Map<string, number>, items: Item[]): string | null {
   for (const [id, delta] of changes) {
     const item = items.find((i) => i.id === id);
-    if (!item) return "Item tidak ditemukan di database";
-    if (item.stock + delta < 0) return `Stok tidak cukup! Tersedia: ${item.stock} ${item.unit}`;
+    if (!item) return "Barang ini tidak ditemukan. Mungkin sudah dihapus admin.";
+    if (item.stock + delta < 0) {
+      return `Stok ${item.name} tinggal ${item.stock} ${item.unit}, tidak cukup untuk ${-delta} ${item.unit}. Periksa lagi jumlahnya.`;
+    }
   }
   return null;
 }
@@ -77,10 +79,10 @@ export interface TxForm {
 
 /** Validasi isian form transaksi. Mengembalikan pesan kesalahan, atau null jika valid. */
 export function validateTxForm(form: TxForm): string | null {
-  if (!form.itemId || !form.qty) return "Item dan jumlah wajib diisi";
+  if (!form.itemId) return "Pilih dulu barangnya.";
   const qty = Number(form.qty);
-  if (!Number.isInteger(qty) || qty <= 0) return "Jumlah harus bilangan bulat lebih dari 0";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return "Tanggal wajib diisi";
+  if (!form.qty || !Number.isInteger(qty) || qty <= 0) return "Jumlah harus angka bulat, paling sedikit 1.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return "Tanggal belum diisi.";
   return null;
 }
 

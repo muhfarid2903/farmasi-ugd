@@ -9,7 +9,7 @@ export interface ToastMessage {
 export function Toast({ toast, onDone }: { toast: ToastMessage | null; onDone: () => void }) {
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(onDone, toast.kind === "error" ? 6000 : 2500);
+    const t = setTimeout(onDone, toast.kind === "error" ? 9000 : 4500);
     return () => clearTimeout(t);
   }, [toast, onDone]);
 

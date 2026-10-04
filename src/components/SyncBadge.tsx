@@ -1,27 +1,26 @@
 import type { SyncStatus } from "../types";
+import { Icon } from "./Icon";
 
-const LABELS: Record<SyncStatus, { cls: string; dot: string; label: string; title: string }> = {
-  loading: { cls: "sync-loading", dot: "loading", label: "Memuat", title: "Menghubungkan ke database" },
-  online: { cls: "sync-online", dot: "online", label: "Real-time", title: "Tersambung dan tersinkron" },
+const LABELS: Record<SyncStatus, { cls: string; label: string; title: string }> = {
+  loading: { cls: "sync-loading", label: "Menyambungkan...", title: "Sedang menyambung ke server" },
+  online: { cls: "sync-online", label: "Tersambung", title: "Semua catatan sudah terkirim" },
   pending: {
     cls: "sync-loading",
-    dot: "loading",
-    label: "Menyinkronkan",
-    title: "Ada perubahan yang belum terkirim ke server",
+    label: "Mengirim...",
+    title: "Catatan sedang dikirim ke server",
   },
   offline: {
     cls: "sync-offline",
-    dot: "offline",
-    label: "Offline",
-    title: "Tidak ada sinyal. Data tetap bisa dicatat dan akan terkirim otomatis.",
+    label: "Tidak ada sinyal",
+    title: "Catatan tetap tersimpan di HP ini dan terkirim otomatis saat ada sinyal",
   },
 };
 
 export function SyncBadge({ status }: { status: SyncStatus }) {
   const s = LABELS[status];
   return (
-    <div className={`sync-badge ${s.cls}`} title={s.title}>
-      <div className={`sync-dot ${s.dot}`} />
+    <div className={`sync-badge ${s.cls}`} title={s.title} role="status">
+      <Icon type={status === "online" ? "check" : "wifi"} size={16} />
       {s.label}
     </div>
   );

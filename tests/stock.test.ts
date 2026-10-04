@@ -45,13 +45,17 @@ describe("stockChanges", () => {
 describe("validateStockChanges", () => {
   const items = [item("a", 5)];
   it("menolak barang keluar melebihi stok", () => {
-    expect(validateStockChanges(new Map([["a", -6]]), items)).toBe("Stok tidak cukup! Tersedia: 5 ampul");
+    expect(validateStockChanges(new Map([["a", -6]]), items)).toBe(
+      "Stok Item a tinggal 5 ampul, tidak cukup untuk 6 ampul. Periksa lagi jumlahnya.",
+    );
   });
   it("mengizinkan stok tepat habis", () => {
     expect(validateStockChanges(new Map([["a", -5]]), items)).toBeNull();
   });
   it("menolak item yang tidak ada", () => {
-    expect(validateStockChanges(new Map([["x", 1]]), items)).toBe("Item tidak ditemukan di database");
+    expect(validateStockChanges(new Map([["x", 1]]), items)).toBe(
+      "Barang ini tidak ditemukan. Mungkin sudah dihapus admin.",
+    );
   });
 });
 
@@ -108,10 +112,10 @@ describe("validateTxForm", () => {
     for (const qty of ["0", "-5", "1.5"]) expect(validateTxForm({ ...base, qty })).not.toBeNull();
   });
   it("menolak item kosong", () => {
-    expect(validateTxForm({ ...base, itemId: "" })).toBe("Item dan jumlah wajib diisi");
+    expect(validateTxForm({ ...base, itemId: "" })).toBe("Pilih dulu barangnya.");
   });
   it("menolak tanggal kosong", () => {
-    expect(validateTxForm({ ...base, date: "" })).toBe("Tanggal wajib diisi");
+    expect(validateTxForm({ ...base, date: "" })).toBe("Tanggal belum diisi.");
   });
 });
 

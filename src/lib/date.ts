@@ -36,3 +36,35 @@ export function monthLabel(yyyyMm: string): string {
   const [y, m] = yyyyMm.split("-");
   return `${BULAN[Number(m) - 1] ?? m} ${y}`;
 }
+
+/** Salam sesuai jam: pagi, siang, sore, atau malam. */
+export function greeting(now: Date = new Date()): string {
+  const h = now.getHours();
+  if (h >= 4 && h < 11) return "Selamat pagi";
+  if (h >= 11 && h < 15) return "Selamat siang";
+  if (h >= 15 && h < 18) return "Selamat sore";
+  return "Selamat malam";
+}
+
+/** Tanggal lengkap dengan nama hari, mis. "Senin, 5 Oktober 2026". */
+export function fullDate(d: Date = new Date()): string {
+  return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+/** "Hari ini", "Kemarin", atau tanggal lengkap dengan nama hari. */
+export function friendlyDate(d: string, now: Date = new Date()): string {
+  const today = todayStr(now);
+  const y = new Date(now);
+  y.setDate(y.getDate() - 1);
+  if (d === today) return "Hari ini";
+  if (d === todayStr(y)) return "Kemarin";
+  const date = new Date(`${d}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? d : fullDate(date);
+}
+
+/** Tanggal N hari sebelum hari ini, format YYYY-MM-DD. */
+export function daysAgo(n: number, now: Date = new Date()): string {
+  const d = new Date(now);
+  d.setDate(d.getDate() - n);
+  return todayStr(d);
+}
