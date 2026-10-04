@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { Icon } from "../../components/Icon";
-import { friendlyDate, fullDate, greeting } from "../../lib/date";
+import { fullDate, greeting } from "../../lib/date";
 import { isLowStock } from "../../lib/stock";
 import type { Item, Transaction, TxType } from "../../types";
+import { TxCard } from "../transaksi/TxCard";
 
 const ALERT_LIMIT = 5;
 const RECENT_LIMIT = 5;
@@ -17,11 +18,6 @@ interface BerandaPageProps {
   onExport: () => void;
   /** Kosong jika pengguna bukan admin. */
   onAddItem?: () => void;
-}
-
-function timeOf(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function BerandaPage({
@@ -117,25 +113,9 @@ export function BerandaPage({
       {recent.length === 0 ? (
         <div className="empty-note">Belum ada catatan barang masuk atau keluar.</div>
       ) : (
-        <div className="recent-list">
+        <div className="card-list">
           {recent.map((tx) => (
-            <div key={tx.id} className="recent-row">
-              <span className={`recent-dir ${tx.type}`}>
-                <Icon type={tx.type === "masuk" ? "arrowDown" : "arrowUp"} size={18} />
-              </span>
-              <div className="recent-text">
-                <div className={tx.voidedBy ? "text-faint" : undefined}>
-                  <b>{tx.operator}</b> {tx.type === "masuk" ? "menerima" : "mengeluarkan"} {tx.qty}{" "}
-                  {unitOf.get(tx.itemId) ?? ""} {tx.itemName}
-                  {tx.voidedBy && " (dibatalkan)"}
-                  {tx.voidsTxId && " (pembatalan)"}
-                </div>
-                <div className="recent-meta">
-                  {friendlyDate(tx.date)}
-                  {tx.createdAt && `, pukul ${timeOf(tx.createdAt)}`}
-                </div>
-              </div>
-            </div>
+            <TxCard key={tx.id} tx={tx} unit={unitOf.get(tx.itemId)} />
           ))}
         </div>
       )}

@@ -115,3 +115,33 @@ export function filterByPeriod(
     ? txs.filter((t) => t.date?.startsWith(period.month))
     : txs.filter((t) => t.date && t.date >= period.from && t.date <= period.to);
 }
+
+export type StockStatus = "habis" | "hampir" | "cukup";
+
+/** Status stok dalam kata sehari-hari. Item tanpa batas minimum hanya bisa "habis" atau "cukup". */
+export function stockStatus(item: Pick<Item, "stock" | "minStock">): StockStatus {
+  if (item.stock <= 0) return "habis";
+  return isLowStock(item) ? "hampir" : "cukup";
+}
+
+export type StockFilter = "semua" | "darurat" | "hampir" | "habis";
+
+export function filterItems(items: Item[], filter: StockFilter, category: string): Item[] {
+  return items.filter(
+    (i) =>
+      (category === "Semua" || i.category === category) &&
+      (filter === "semua" ||
+        (filter === "darurat" && i.kritis) ||
+        (filter === "hampir" && stockStatus(i) === "hampir") ||
+        (filter === "habis" && stockStatus(i) === "habis")),
+  );
+}
+
+export type TxPeriod = "hari" | "minggu" | "semua";
+
+/** Transaksi hari ini, 7 hari terakhir (termasuk hari ini), atau semua. */
+export function filterTxPeriod(txs: Transaction[], period: TxPeriod, today: string, weekAgo: string): Transaction[] {
+  if (period === "hari") return txs.filter((t) => t.date === today);
+  if (period === "minggu") return txs.filter((t) => t.date > weekAgo && t.date <= today);
+  return txs;
+}

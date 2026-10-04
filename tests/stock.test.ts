@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   canVoid,
   filterByPeriod,
+  filterItems,
+  filterTxPeriod,
   isLowStock,
   stockChanges,
+  stockStatus,
   validateItemForm,
   validateStockChanges,
   validateTxForm,
@@ -150,5 +153,35 @@ describe("filterByPeriod", () => {
   });
   it("rentang tanggal inklusif", () => {
     expect(filterByPeriod(txs, { mode: "rentang", from: "2026-09-30", to: "2026-10-01" })).toHaveLength(2);
+  });
+});
+
+describe("stockStatus / filterItems / filterTxPeriod", () => {
+  it("status dalam kata", () => {
+    expect(stockStatus({ stock: 0, minStock: 0 })).toBe("habis");
+    expect(stockStatus({ stock: 2, minStock: 3 })).toBe("hampir");
+    expect(stockStatus({ stock: 9, minStock: 3 })).toBe("cukup");
+    expect(stockStatus({ stock: 1, minStock: 0 })).toBe("cukup");
+  });
+  it("menyaring barang per status dan jenis", () => {
+    const list = [
+      item("a", 0, { kritis: true }),
+      item("b", 2, { category: "Alat Medis" }),
+      item("c", 9, { kritis: true, category: "Alat Medis" }),
+    ];
+    expect(filterItems(list, "darurat", "Semua").map((i) => i.id)).toEqual(["a", "c"]);
+    expect(filterItems(list, "hampir", "Semua").map((i) => i.id)).toEqual(["b"]);
+    expect(filterItems(list, "habis", "Semua").map((i) => i.id)).toEqual(["a"]);
+    expect(filterItems(list, "semua", "Alat Medis").map((i) => i.id)).toEqual(["b", "c"]);
+  });
+  it("menyaring riwayat per waktu", () => {
+    const tx = (date: string) => ({ id: date, date }) as Transaction;
+    const txs = [tx("2026-10-05"), tx("2026-09-30"), tx("2026-09-28"), tx("2026-09-01")];
+    expect(filterTxPeriod(txs, "hari", "2026-10-05", "2026-09-28")).toHaveLength(1);
+    expect(filterTxPeriod(txs, "minggu", "2026-10-05", "2026-09-28").map((t) => t.date)).toEqual([
+      "2026-10-05",
+      "2026-09-30",
+    ]);
+    expect(filterTxPeriod(txs, "semua", "2026-10-05", "2026-09-28")).toHaveLength(4);
   });
 });

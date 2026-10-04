@@ -6,13 +6,16 @@ import { SyncBadge } from "./components/SyncBadge";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { BerandaPage } from "./features/beranda/BerandaPage";
 import { ExportModal } from "./features/laporan/ExportModal";
-import { PetugasPage } from "./features/petugas/PetugasPage";
+import { BantuanPage } from "./features/bantuan/BantuanPage";
+import { TourModal } from "./features/bantuan/TourModal";
+import { PengaturanPage } from "./features/pengaturan/PengaturanPage";
 import { ItemFormModal } from "./features/stok/ItemFormModal";
 import { StokPage } from "./features/stok/StokPage";
 import { TransaksiPage } from "./features/transaksi/TransaksiPage";
 import { TxWizard, type NewTx } from "./features/transaksi/TxWizard";
 import { VoidTxModal } from "./features/transaksi/VoidTxModal";
 import { logout } from "./hooks/useAuth";
+import { useFirstVisit } from "./hooks/useFirstVisit";
 import { useFontScale } from "./hooks/useFontScale";
 import { useInventory } from "./hooks/useInventory";
 import { nowISO, todayStr } from "./lib/date";
@@ -26,13 +29,15 @@ type ModalState =
   | { kind: "item"; editItem?: Item }
   | { kind: "export" }
   | { kind: "font" }
+  | { kind: "tour" }
   | null;
 
 const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] = [
   { page: "beranda", label: "Beranda", icon: "home" },
   { page: "stok", label: "Stok", icon: "package" },
   { page: "riwayat", label: "Riwayat", icon: "clock" },
-  { page: "petugas", label: "Petugas", icon: "users", adminOnly: true },
+  { page: "bantuan", label: "Bantuan", icon: "help" },
+  { page: "pengaturan", label: "Pengaturan", icon: "settings", adminOnly: true },
 ];
 
 export default function App({ profile }: { profile: UserProfile }) {
@@ -41,6 +46,7 @@ export default function App({ profile }: { profile: UserProfile }) {
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [fontScale, setFontScale] = useFontScale();
+  const [firstVisit, markTourSeen] = useFirstVisit(`tour.${profile.email}`);
   const isAdmin = profile.role === "admin";
   const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
 
@@ -107,16 +113,13 @@ export default function App({ profile }: { profile: UserProfile }) {
   }
 
   function handleDeleteItem(item: Item) {
-    if (window.confirm(`Hapus barang ini dari daftar?\n\n${item.name}\n\nRiwayat catatannya tetap tersimpan.`)) {
-      write(repo.deleteItem(item.id), "Barang dihapus");
-    }
+    write(repo.deleteItem(item.id), `${item.name} dihapus dari daftar`);
+    setModal(null);
   }
 
-  function handleToggleKritis(item: Item) {
-    write(
-      repo.updateItem(item.id, { kritis: !item.kritis }),
-      item.kritis ? "Tanda obat darurat dilepas" : "Ditandai sebagai obat darurat",
-    );
+  function closeTour() {
+    markTourSeen();
+    setModal(null);
   }
 
   function handleSaveUser(user: UserProfile, isNew: boolean) {
@@ -199,12 +202,11 @@ export default function App({ profile }: { profile: UserProfile }) {
               isAdmin={isAdmin}
               onAddItem={openAddItem}
               onEditItem={(item) => setModal({ kind: "item", editItem: item })}
-              onDeleteItem={handleDeleteItem}
-              onToggleKritis={handleToggleKritis}
             />
           )}
           {page === "riwayat" && (
             <TransaksiPage
+              items={items}
               transactions={transactions}
               onNewTx={openNewTx}
               canVoid={userCanVoid}
@@ -212,7 +214,16 @@ export default function App({ profile }: { profile: UserProfile }) {
               onExport={openExport}
             />
           )}
-          {page === "petugas" && isAdmin && <PetugasPage currentEmail={profile.email} onSave={handleSaveUser} />}
+          {page === "bantuan" && <BantuanPage onShowTour={() => setModal({ kind: "tour" })} />}
+          {page === "pengaturan" && isAdmin && (
+            <PengaturanPage
+              currentEmail={profile.email}
+              onSaveUser={handleSaveUser}
+              onAddItem={openAddItem}
+              onShowStock={() => setPage("stok")}
+              onExport={openExport}
+            />
+          )}
         </main>
       </div>
 
@@ -251,9 +262,15 @@ export default function App({ profile }: { profile: UserProfile }) {
         />
       )}
       {modal?.kind === "item" && (
-        <ItemFormModal editItem={modal.editItem} onSubmit={handleSaveItem} onClose={closeModal} />
+        <ItemFormModal
+          editItem={modal.editItem}
+          onSubmit={handleSaveItem}
+          onDelete={handleDeleteItem}
+          onClose={closeModal}
+        />
       )}
       {modal?.kind === "export" && <ExportModal transactions={transactions} onClose={closeModal} notify={notify} />}
+      {(modal?.kind === "tour" || (firstVisit && modal === null)) && <TourModal onClose={closeTour} />}
       {modal?.kind === "font" && <FontSizeModal scale={fontScale} onChange={setFontScale} onClose={closeModal} />}
 
       <Toast key={toast?.id} toast={toast} onDone={clearToast} />
