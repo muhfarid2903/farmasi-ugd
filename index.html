@@ -892,9 +892,13 @@
       { name:"Zinc tab disp 20 mg", category:"Obat", unit:"tablet", stock:0, minStock:0, kritis:false }
     ];
 
-    function formatDate(d) { return new Date(d).toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}); }
-    function todayStr() { return new Date().toISOString().split("T")[0]; }
+    // Tanggal "YYYY-MM-DD" diparse sebagai waktu lokal (bukan UTC) agar tidak bergeser hari
+    function formatDate(d) { return new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? d+"T00:00:00" : d).toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}); }
+    // Tanggal hari ini menurut jam perangkat (WITA), bukan UTC
+    function todayStr() { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
     function nowISO() { return new Date().toISOString(); }
+    // Item dengan minimum stok 0 dianggap tidak dipantau, jadi tidak masuk peringatan
+    function isLowStock(i) { return i.minStock>0 && i.stock<=i.minStock; }
 
     const Icon = ({type, size=18}) => {
       const s = {width:size,height:size,fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"};
@@ -979,10 +983,14 @@
       }
 
       async function handleAddItem() {
-        if(!formItem.name||!formItem.stock||!formItem.minStock) { setFormError("Semua field wajib diisi"); return; }
+        // Bandingkan dengan "" (bukan falsy) supaya stok 0 tetap valid
+        if(!String(formItem.name).trim()||String(formItem.stock)===""||String(formItem.minStock)==="") { setFormError("Semua field wajib diisi"); return; }
+        const stock = Number(formItem.stock), minStock = Number(formItem.minStock);
+        if(!Number.isInteger(stock)||stock<0||!Number.isInteger(minStock)||minStock<0) { setFormError("Stok dan minimum stok harus bilangan bulat ≥ 0"); return; }
         try {
-          const data = {name:formItem.name, category:formItem.category, unit:formItem.unit, stock:Number(formItem.stock), minStock:Number(formItem.minStock), kritis:formItem.kritis||false};
-          if(editItem) await db.collection("items").doc(editItem.id).update(data);
+          const data = {name:String(formItem.name).trim(), category:formItem.category, unit:formItem.unit, stock, minStock, kritis:formItem.kritis||false};
+          // Saat edit, stok hanya ditulis jika diubah, agar tidak menimpa transaksi dari perangkat lain
+          if(editItem) { if(stock===editItem.stock) delete data.stock; await db.collection("items").doc(editItem.id).update(data); }
           else await db.collection("items").add({...data, createdAt:nowISO()});
           setShowModal(null); setEditItem(null);
           setFormItem({name:"",category:"Obat",unit:"tablet",stock:"",minStock:"",kritis:false}); setFormError("");
@@ -998,35 +1006,39 @@
         const item = items.find(i=>i.id===formTx.itemId);
         if(!item) return;
         const qty = Number(formTx.qty);
+        if(!Number.isInteger(qty)||qty<=0) { setFormError("Jumlah harus bilangan bulat lebih dari 0"); return; }
+        if(!formTx.date) { setFormError("Tanggal wajib diisi"); return; }
 
-        if(editTx) {
-          try {
-            // Reverse old stock
-            const oldItem = items.find(i=>i.id===editTx.itemId);
-            if(oldItem) {
-              const reversedStock = editTx.type==="masuk" ? oldItem.stock - editTx.qty : oldItem.stock + editTx.qty;
-              await db.collection("items").doc(editTx.itemId).update({stock:reversedStock});
+        // Semua perubahan stok + catatan transaksi ditulis dalam satu Firestore transaction:
+        // stok dibaca ulang dari server, dan jika ada yang gagal tidak ada yang tersimpan.
+        const userError = msg => Object.assign(new Error(msg), {userMsg:true});
+        const txData = {itemId:item.id, itemName:item.name, type:formTx.type, qty, date:formTx.date, note:formTx.note, operator:formTx.operator};
+        try {
+          await db.runTransaction(async t => {
+            const newRef = db.collection("items").doc(item.id);
+            const stocks = {};
+            if(editTx) {
+              // Kembalikan efek transaksi lama ke stok item lamanya
+              const oldRef = db.collection("items").doc(editTx.itemId);
+              const oldSnap = await t.get(oldRef);
+              if(oldSnap.exists) stocks[editTx.itemId] = oldSnap.data().stock + (editTx.type==="masuk" ? -editTx.qty : editTx.qty);
             }
-            // Re-fetch item stock after reversal (may be same item)
-            const freshDoc = await db.collection("items").doc(item.id).get();
-            const freshStock = freshDoc.exists ? freshDoc.data().stock : item.stock;
-            if(formTx.type==="keluar" && qty>freshStock) { setFormError("Stok tidak cukup! Tersedia: "+freshStock+" "+item.unit); return; }
-            // Apply new stock
-            const newStock = formTx.type==="masuk" ? freshStock+qty : freshStock-qty;
-            await db.collection("items").doc(item.id).update({stock:newStock});
-            // Update transaction doc
-            await db.collection("transactions").doc(editTx.id).update({itemId:item.id, itemName:item.name, type:formTx.type, qty, date:formTx.date, note:formTx.note, operator:formTx.operator});
-            setShowModal(null); setEditTx(null); setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""}); setFormError("");
-          } catch(e) { setFormError("Gagal: "+e.message); }
-        } else {
-          if(formTx.type==="keluar" && qty>item.stock) { setFormError("Stok tidak cukup! Tersedia: "+item.stock+" "+item.unit); return; }
-          try {
-            const newStock = formTx.type==="masuk" ? item.stock+qty : item.stock-qty;
-            await db.collection("items").doc(item.id).update({stock:newStock});
-            await db.collection("transactions").add({itemId:item.id, itemName:item.name, type:formTx.type, qty, date:formTx.date, note:formTx.note, operator:formTx.operator, createdAt:nowISO()});
-            setShowModal(null); setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""}); setFormError("");
-          } catch(e) { setFormError("Gagal: "+e.message); }
-        }
+            if(!(item.id in stocks)) {
+              const newSnap = await t.get(newRef);
+              if(!newSnap.exists) throw userError("Item tidak ditemukan di database");
+              stocks[item.id] = newSnap.data().stock;
+            }
+            if(formTx.type==="keluar" && qty>stocks[item.id]) throw userError("Stok tidak cukup! Tersedia: "+stocks[item.id]+" "+item.unit);
+            stocks[item.id] += formTx.type==="masuk" ? qty : -qty;
+            for(const id in stocks) {
+              if(stocks[id]<0) throw userError("Perubahan ini membuat stok "+(items.find(i=>i.id===id)?.name||"item lama")+" menjadi negatif ("+stocks[id]+"). Barang tersebut sudah terpakai.");
+            }
+            for(const id in stocks) t.update(db.collection("items").doc(id), {stock:stocks[id]});
+            if(editTx) t.update(db.collection("transactions").doc(editTx.id), txData);
+            else t.set(db.collection("transactions").doc(), {...txData, createdAt:nowISO()});
+          });
+          setShowModal(null); setEditTx(null); setFormTx({itemId:"",type:"masuk",qty:"",date:todayStr(),note:"",operator:""}); setFormError("");
+        } catch(e) { setFormError(e.userMsg ? e.message : "Gagal: "+e.message); }
       }
 
       function openEditTx(tx) {
@@ -1123,7 +1135,7 @@
         setShowItemDropdown(false);
       }
 
-      const lowStockItems = useMemo(()=>items.filter(i=>i.stock<=i.minStock),[items]);
+      const lowStockItems = useMemo(()=>items.filter(isLowStock),[items]);
       const criticalLowStock = useMemo(()=>lowStockItems.filter(i=>i.kritis),[lowStockItems]);
       const regularLowStock = useMemo(()=>lowStockItems.filter(i=>!i.kritis),[lowStockItems]);
       const totalStock = items.reduce((s,i)=>s+i.stock,0);
@@ -1237,7 +1249,7 @@
                 </div>
                 <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius)",overflow:"hidden"}}>
                   <table><thead><tr><th>Nama</th><th>Kategori</th><th>Status</th><th>Stok</th><th>Min. Stok</th><th>Aksi</th></tr></thead>
-                  <tbody>{filteredItems.length===0?<tr><td colSpan={6} style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Tidak ada data</td></tr>:filteredItems.map(item=><tr key={item.id}><td style={{fontWeight:600}}>{item.name}</td><td><span className="tag tag-cat">{item.category}</span></td><td><button className={"kritis-badge"+(item.kritis?" active":"")} onClick={()=>toggleKritis(item)}>{item.kritis?"⚠ KRITIS":"—"}</button></td><td>{item.stock<=item.minStock?<span className="stock-warn"><Icon type="alert" size={14}/> {item.stock}</span>:<span className="stock-ok">{item.stock}</span>}</td><td style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--text2)"}}>{item.minStock}</td><td><div className="actions"><button className="btn btn-ghost btn-sm" onClick={()=>openEditItem(item)}><Icon type="edit" size={14}/></button><button className="btn btn-danger btn-sm" onClick={()=>handleDeleteItem(item.id)}><Icon type="trash" size={14}/></button></div></td></tr>)}</tbody></table>
+                  <tbody>{filteredItems.length===0?<tr><td colSpan={6} style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Tidak ada data</td></tr>:filteredItems.map(item=><tr key={item.id}><td style={{fontWeight:600}}>{item.name}</td><td><span className="tag tag-cat">{item.category}</span></td><td><button className={"kritis-badge"+(item.kritis?" active":"")} onClick={()=>toggleKritis(item)}>{item.kritis?"⚠ KRITIS":"—"}</button></td><td>{isLowStock(item)?<span className="stock-warn"><Icon type="alert" size={14}/> {item.stock}</span>:<span className="stock-ok">{item.stock}</span>}</td><td style={{fontFamily:"'JetBrains Mono',monospace",color:"var(--text2)"}}>{item.minStock}</td><td><div className="actions"><button className="btn btn-ghost btn-sm" onClick={()=>openEditItem(item)}><Icon type="edit" size={14}/></button><button className="btn btn-danger btn-sm" onClick={()=>handleDeleteItem(item.id)}><Icon type="trash" size={14}/></button></div></td></tr>)}</tbody></table>
                 </div>
               </>}
 
@@ -1315,7 +1327,7 @@
                       <div className="item-dropdown-name">{i.name}</div>
                       <div className="item-dropdown-meta">
                         <span className="tag tag-cat" style={{fontSize:10}}>{i.category}</span>
-                        <span style={{color:i.stock<=i.minStock&&i.stock>0?"var(--red)":i.stock===0?"var(--text3)":"var(--accent)",fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600}}>Stok: {i.stock} {i.unit}</span>
+                        <span style={{color:isLowStock(i)&&i.stock>0?"var(--red)":i.stock===0?"var(--text3)":"var(--accent)",fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600}}>Stok: {i.stock} {i.unit}</span>
                       </div>
                     </div>
                   ))}
