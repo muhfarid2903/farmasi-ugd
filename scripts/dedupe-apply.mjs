@@ -3,6 +3,8 @@
 //   node scripts/dedupe-apply.mjs backups/plan.json                       → uji coba, tidak menulis
 //   node scripts/dedupe-apply.mjs backups/plan.json --execute             → tulis ke database
 //   ... --counts backups/daftar-hitung-fisik.csv                          → sertakan hasil hitung fisik
+//   ... --keep-stock                                                      → tanpa hitung fisik: pakai stok
+//                                                                           salinan yang dipertahankan (min. 0)
 //
 // Grup yang stoknya berbeda hanya diproses jika hasil hitung fisiknya ada di file --counts.
 // Sebelum menulis, data di server dicocokkan dengan cadangan; jika ada yang berubah, dibatalkan.
@@ -13,6 +15,7 @@ import { collection, doc, getDocs, getFirestore, writeBatch } from "firebase/fir
 const args = process.argv.slice(2);
 const plan = JSON.parse(readFileSync(args[0], "utf8"));
 const execute = args.includes("--execute");
+const keepStock = args.includes("--keep-stock");
 const countsFile = args.includes("--counts") ? args[args.indexOf("--counts") + 1] : null;
 
 for (const f of [".env.local", ".env"]) if (existsSync(f)) process.loadEnvFile(f);
@@ -82,11 +85,12 @@ for (const m of plan.merges) {
   const update = { ...m.update };
   if (m.needsCount) {
     const n = counts.get(m.name.trim().toLowerCase());
-    if (n === undefined) {
+    if (n !== undefined) update.stock = n;
+    else if (keepStock) update.stock = Math.max(0, m.copies.find((c) => c.id === m.keepId).stock);
+    else {
       skipped++;
       continue;
     }
-    update.stock = n;
   }
   ops.push((b) => b.update(doc(db, "items", m.keepId), update));
   for (const id of m.moveTxIds)
