@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Icon } from "../../components/Icon";
-import { fullDate, greeting } from "../../lib/date";
+import { fullDate, greeting, todayStr } from "../../lib/date";
+import { expiringItems, expiryStatus, expiryText, formatExpiry } from "../../lib/expiry";
 import { isLowStock } from "../../lib/stock";
+import type { StockFilter } from "../../lib/stock";
 import type { Item, Transaction, TxType } from "../../types";
 import { TxCard } from "../transaksi/TxCard";
 
@@ -13,7 +15,7 @@ interface BerandaPageProps {
   items: Item[];
   transactions: Transaction[];
   onNewTx: (type: TxType) => void;
-  onShowStock: () => void;
+  onShowStock: (filter?: StockFilter) => void;
   onShowHistory: () => void;
   onExport: () => void;
   /** Kosong jika pengguna bukan admin. */
@@ -34,6 +36,8 @@ export function BerandaPage({
     const low = items.filter(isLowStock).sort((a, b) => a.stock - b.stock);
     return { critical: low.filter((i) => i.kritis), regularCount: low.filter((i) => !i.kritis).length };
   }, [items]);
+  const expiring = useMemo(() => expiringItems(items, todayStr()), [items]);
+  const anyExpiry = useMemo(() => items.some((i) => i.expiry), [items]);
   const unitOf = useMemo(() => new Map(items.map((i) => [i.id, i.unit])), [items]);
   const recent = transactions.slice(0, RECENT_LIMIT);
 
@@ -93,7 +97,7 @@ export function BerandaPage({
           ))}
           {critical.length > ALERT_LIMIT && (
             <div className="alert-more">
-              <button className="btn-link" onClick={onShowStock}>
+              <button className="btn-link" onClick={() => onShowStock("hampir")}>
                 Lihat semua ({critical.length}) →
               </button>
             </div>
@@ -103,10 +107,51 @@ export function BerandaPage({
       {regularCount > 0 && (
         <p className="form-hint">
           Selain itu ada {regularCount} barang biasa yang hampir habis.{" "}
-          <button className="btn-link" onClick={onShowStock}>
+          <button className="btn-link" onClick={() => onShowStock("hampir")}>
             Lihat di halaman Stok
           </button>
         </p>
+      )}
+
+      <h2 className="section-title">Tanggal kedaluwarsa (ED)</h2>
+      {expiring.length > 0 ? (
+        <div className="alert-panel warn">
+          <div className="alert-panel-title">
+            <Icon type="alert" size={22} /> {expiring.length} barang sudah atau segera kedaluwarsa
+          </div>
+          {expiring.slice(0, ALERT_LIMIT).map((it) => {
+            const lewat = expiryStatus(it.expiry!, todayStr()) === "lewat";
+            return (
+              <div key={it.id} className="alert-row">
+                <div>
+                  <div className="alert-row-name">{it.name}</div>
+                  <div className="alert-row-cat">
+                    Sisa {it.stock} {it.unit}
+                    {it.kritis && " · Obat darurat"}
+                  </div>
+                </div>
+                <div className={`alert-row-count${lewat ? " text-red" : ""}`}>
+                  {lewat ? "Sudah lewat" : formatExpiry(it.expiry!)}
+                  <small>{lewat ? `ED ${formatExpiry(it.expiry!)}` : expiryText(it.expiry!, todayStr())}</small>
+                </div>
+              </div>
+            );
+          })}
+          <div className="alert-more">
+            <button className="btn-link" onClick={() => onShowStock("ed")}>
+              {expiring.length > ALERT_LIMIT ? `Lihat semua (${expiring.length}) →` : "Buka di halaman Stok →"}
+            </button>
+          </div>
+        </div>
+      ) : anyExpiry ? (
+        <div className="all-good">
+          <Icon type="check" size={22} /> Tidak ada barang yang kedaluwarsa dalam 3 bulan ke depan.
+        </div>
+      ) : (
+        <div className="empty-note">
+          ED belum diisi untuk barang mana pun. Isi ED saat mencatat <b>Barang Masuk</b>, atau lewat tombol <b>ED</b> di
+          halaman Stok.
+        </div>
       )}
 
       <h2 className="section-title">Catatan terakhir</h2>

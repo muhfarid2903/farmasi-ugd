@@ -37,6 +37,8 @@ export interface Item {
   createdAt?: string;
   /** Transaksi terakhir yang mengubah stok; dipakai aturan keamanan untuk memverifikasi perubahan stok. */
   lastTxId?: string;
+  /** Tanggal kedaluwarsa terdekat, "YYYY-MM". Kosong jika tidak diketahui atau stok habis. */
+  expiry?: string;
 }
 
 /** Dokumen di koleksi `transactions`. `date` berformat YYYY-MM-DD (tanggal lokal). */
@@ -51,6 +53,8 @@ export interface Transaction {
   operator: string;
   /** Email akun yang mencatat (kosong untuk transaksi sebelum ada login). */
   email?: string;
+  /** ED barang yang diterima ("YYYY-MM"), hanya pada barang masuk dan bila diisi. */
+  expiry?: string;
   createdAt: string;
   /** Diisi pada transaksi pembatalan: id transaksi yang dibatalkan. */
   voidsTxId?: string;

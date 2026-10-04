@@ -9,6 +9,7 @@ import { ExportModal } from "./features/laporan/ExportModal";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
 import { TourModal } from "./features/bantuan/TourModal";
 import { PengaturanPage } from "./features/pengaturan/PengaturanPage";
+import { ExpiryModal } from "./features/stok/ExpiryModal";
 import { ItemFormModal } from "./features/stok/ItemFormModal";
 import { StokPage } from "./features/stok/StokPage";
 import { TransaksiPage } from "./features/transaksi/TransaksiPage";
@@ -19,14 +20,16 @@ import { useFirstVisit } from "./hooks/useFirstVisit";
 import { useFontScale } from "./hooks/useFontScale";
 import { useInventory } from "./hooks/useInventory";
 import { nowISO, todayStr } from "./lib/date";
+import { expiryPatch, formatExpiry } from "./lib/expiry";
 import * as repo from "./lib/repository";
-import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData } from "./lib/stock";
+import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type StockFilter } from "./lib/stock";
 import type { Item, Page, Transaction, TxType, UserProfile } from "./types";
 
 type ModalState =
   | { kind: "tx"; type: TxType }
   | { kind: "void"; tx: Transaction }
   | { kind: "item"; editItem?: Item }
+  | { kind: "expiry"; item: Item }
   | { kind: "export" }
   | { kind: "font" }
   | { kind: "tour" }
@@ -43,6 +46,7 @@ const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] 
 export default function App({ profile }: { profile: UserProfile }) {
   const { items, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("beranda");
+  const [stokFilter, setStokFilter] = useState<StockFilter>("semua");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [fontScale, setFontScale] = useFontScale();
@@ -81,7 +85,11 @@ export default function App({ profile }: { profile: UserProfile }) {
   const userCanVoid = useCallback((tx: Transaction) => canVoid(tx, profile), [profile]);
 
   function handleWizardSave(data: NewTx): string {
-    const { id, done } = repo.saveTransaction({ ...data, operator: profile.name, email: profile.email });
+    const item = items.find((i) => i.id === data.itemId);
+    const { id, done } = repo.saveTransaction(
+      { ...data, operator: profile.name, email: profile.email },
+      item ? expiryPatch(item, data) : undefined,
+    );
     reportFailure(done);
     return id;
   }
@@ -115,6 +123,19 @@ export default function App({ profile }: { profile: UserProfile }) {
   function handleDeleteItem(item: Item) {
     write(repo.deleteItem(item.id), `${item.name} dihapus dari daftar`);
     setModal(null);
+  }
+
+  function handleSetExpiry(item: Item, expiry: string | null) {
+    write(
+      repo.setExpiry(item.id, expiry),
+      expiry ? `ED ${item.name} diperbarui: ${formatExpiry(expiry)}` : `ED ${item.name} dikosongkan`,
+    );
+    setModal(null);
+  }
+
+  function showStock(filter: StockFilter = "semua") {
+    setStokFilter(filter);
+    setPage("stok");
   }
 
   function closeTour() {
@@ -171,7 +192,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               key={n.page}
               className={`nav-btn${page === n.page ? " active" : ""}`}
               aria-current={page === n.page ? "page" : undefined}
-              onClick={() => setPage(n.page)}
+              onClick={() => (n.page === "stok" ? showStock() : setPage(n.page))}
             >
               <Icon type={n.icon} size={22} /> {n.label}
               {n.page === "stok" && lowCount > 0 && (
@@ -190,7 +211,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               items={items}
               transactions={transactions}
               onNewTx={openNewTx}
-              onShowStock={() => setPage("stok")}
+              onShowStock={showStock}
               onShowHistory={() => setPage("riwayat")}
               onExport={openExport}
               onAddItem={isAdmin ? openAddItem : undefined}
@@ -198,10 +219,13 @@ export default function App({ profile }: { profile: UserProfile }) {
           )}
           {page === "stok" && (
             <StokPage
+              key={stokFilter}
               items={items}
               isAdmin={isAdmin}
+              initialFilter={stokFilter}
               onAddItem={openAddItem}
               onEditItem={(item) => setModal({ kind: "item", editItem: item })}
+              onEditExpiry={(item) => setModal({ kind: "expiry", item })}
             />
           )}
           {page === "riwayat" && (
@@ -220,7 +244,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               currentEmail={profile.email}
               onSaveUser={handleSaveUser}
               onAddItem={openAddItem}
-              onShowStock={() => setPage("stok")}
+              onShowStock={() => showStock()}
               onExport={openExport}
             />
           )}
@@ -234,7 +258,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               key={n.page}
               className={`mobile-nav-btn${page === n.page ? " active" : ""}`}
               aria-current={page === n.page ? "page" : undefined}
-              onClick={() => setPage(n.page)}
+              onClick={() => (n.page === "stok" ? showStock() : setPage(n.page))}
             >
               <Icon type={n.icon} size={24} /> {n.label}
             </button>
@@ -268,6 +292,9 @@ export default function App({ profile }: { profile: UserProfile }) {
           onDelete={handleDeleteItem}
           onClose={closeModal}
         />
+      )}
+      {modal?.kind === "expiry" && (
+        <ExpiryModal item={modal.item} onSave={(expiry) => handleSetExpiry(modal.item, expiry)} onClose={closeModal} />
       )}
       {modal?.kind === "export" && <ExportModal transactions={transactions} onClose={closeModal} notify={notify} />}
       {(modal?.kind === "tour" || (firstVisit && modal === null)) && <TourModal onClose={closeTour} />}

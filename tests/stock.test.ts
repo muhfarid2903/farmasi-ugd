@@ -130,6 +130,7 @@ describe("validateItemForm", () => {
     stock: "0",
     minStock: "0",
     kritis: true,
+    expiry: "",
   };
   it("stok 0 dan minimum 0 valid", () => expect(validateItemForm(base)).toBeNull());
   it("menolak kolom kosong", () => {

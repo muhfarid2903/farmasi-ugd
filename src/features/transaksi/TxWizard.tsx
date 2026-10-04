@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ExpiryPicker } from "../../components/ExpiryPicker";
 import { Icon } from "../../components/Icon";
 import { useBackButton } from "../../hooks/useBackButton";
 import { daysAgo, friendlyDate, todayStr } from "../../lib/date";
@@ -45,6 +46,7 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
   const [editDate, setEditDate] = useState(false);
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState("");
+  const [expiry, setExpiry] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<{ id: string; data: NewTx; stockAfter: number } | null>(null);
   const [undone, setUndone] = useState(false);
@@ -107,7 +109,15 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
     if (stockError) return setError(stockError);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError("Tanggal belum diisi.");
     const note = [reason, detail.trim()].filter(Boolean).join(": ");
-    const data: NewTx = { itemId: item.id, itemName: item.name, type, qty: qtyNum, date, note };
+    const data: NewTx = {
+      itemId: item.id,
+      itemName: item.name,
+      type,
+      qty: qtyNum,
+      date,
+      note,
+      ...(type === "masuk" && expiry ? { expiry } : {}),
+    };
     const id = onSave(data);
     setSaved({ id, data, stockAfter });
     setUndone(false);
@@ -128,6 +138,7 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
     setQty("1");
     setReason("");
     setDetail("");
+    setExpiry("");
     setDate(todayStr());
     setEditDate(false);
     setSaved(null);
@@ -353,6 +364,14 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
                 <span>{operatorName}</span>
               </div>
             </div>
+
+            {type === "masuk" && (
+              <div className="form-group expiry-box">
+                <div className="form-label">Tanggal kedaluwarsa / ED (boleh dilewati)</div>
+                <p className="form-hint">Lihat tulisan "ED" atau "Exp" di kemasan barang yang baru diterima.</p>
+                <ExpiryPicker value={expiry} onChange={setExpiry} idPrefix="wiz-ed" />
+              </div>
+            )}
 
             <div className="form-group">
               <div className="form-label">Keterangan (boleh dilewati)</div>

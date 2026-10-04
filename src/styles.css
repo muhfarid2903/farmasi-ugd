@@ -1517,3 +1517,29 @@ select:focus {
     font-size: 12pt;
   }
 }
+
+/* ── Tahap 3: tanggal kedaluwarsa ──────────────────────────────── */
+.expiry-box {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+.expiry-picker .form-row {
+  margin-bottom: 0.25rem;
+}
+.expiry-lewat {
+  color: var(--red);
+  font-weight: 600;
+}
+.expiry-segera {
+  color: var(--orange);
+  font-weight: 600;
+}
+.stock-card-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+.alert-panel .alert-row-count.text-red {
+  color: var(--red);
+}

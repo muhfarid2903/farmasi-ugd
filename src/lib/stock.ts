@@ -1,3 +1,5 @@
+import { todayStr } from "./date";
+import { expiryStatus } from "./expiry";
 import type { Item, Transaction, TxType } from "../types";
 
 /** Item dengan minimum stok 0 dianggap tidak dipantau, jadi tidak masuk peringatan. */
@@ -93,6 +95,8 @@ export interface ItemForm {
   stock: string;
   minStock: string;
   kritis: boolean;
+  /** "YYYY-MM" atau "" */
+  expiry: string;
 }
 
 /** Validasi isian form item. Stok 0 valid; yang ditolak hanya kolom kosong. */
@@ -124,16 +128,17 @@ export function stockStatus(item: Pick<Item, "stock" | "minStock">): StockStatus
   return isLowStock(item) ? "hampir" : "cukup";
 }
 
-export type StockFilter = "semua" | "darurat" | "hampir" | "habis";
+export type StockFilter = "semua" | "darurat" | "hampir" | "habis" | "ed";
 
-export function filterItems(items: Item[], filter: StockFilter, category: string): Item[] {
+export function filterItems(items: Item[], filter: StockFilter, category: string, today = todayStr()): Item[] {
   return items.filter(
     (i) =>
       (category === "Semua" || i.category === category) &&
       (filter === "semua" ||
         (filter === "darurat" && i.kritis) ||
         (filter === "hampir" && stockStatus(i) === "hampir") ||
-        (filter === "habis" && stockStatus(i) === "habis")),
+        (filter === "habis" && stockStatus(i) === "habis") ||
+        (filter === "ed" && i.stock > 0 && !!i.expiry && expiryStatus(i.expiry, today) !== "aman")),
   );
 }
 

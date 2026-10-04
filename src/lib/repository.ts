@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   increment,
   onSnapshot,
@@ -62,13 +63,22 @@ export function subscribeTransactions(
 
 export type ItemData = Omit<Item, "id" | "createdAt" | "lastTxId">;
 
-export async function addItem(data: ItemData): Promise<void> {
-  await addDoc(itemsCol, { ...data, createdAt: nowISO() });
+export async function addItem({ expiry, ...data }: ItemData): Promise<void> {
+  await addDoc(itemsCol, { ...data, ...(expiry ? { expiry } : {}), createdAt: nowISO() });
 }
 
-/** Stok hanya ditulis jika disertakan, agar tidak menimpa transaksi dari perangkat lain. */
+/**
+ * Stok hanya ditulis jika disertakan, agar tidak menimpa transaksi dari perangkat lain.
+ * ED kosong ("" atau undefined) yang disertakan berarti ED dihapus.
+ */
 export async function updateItem(id: string, data: Partial<ItemData>): Promise<void> {
-  await updateDoc(doc(itemsCol, id), data);
+  const { expiry, ...rest } = data;
+  await updateDoc(doc(itemsCol, id), { ...rest, ...("expiry" in data ? { expiry: expiry || deleteField() } : {}) });
+}
+
+/** Perbarui atau hapus (null) ED barang. */
+export function setExpiry(id: string, expiry: string | null): Promise<void> {
+  return updateDoc(doc(itemsCol, id), { expiry: expiry ?? deleteField() });
 }
 
 export async function deleteItem(id: string): Promise<void> {
@@ -89,11 +99,19 @@ export async function deleteItem(id: string): Promise<void> {
  * Tidak perlu menunggu Promise-nya: saat offline, Promise baru selesai setelah tersinkron,
  * padahal perubahan sudah langsung berlaku di cache lokal.
  */
-export function saveTransaction(data: TxData): { id: string; done: Promise<void> } {
+export function saveTransaction(
+  data: TxData,
+  /** ED barang yang ikut berubah: string = ED baru, null = dikosongkan, undefined = tidak berubah. */
+  expiry?: string | null,
+): { id: string; done: Promise<void> } {
   const batch = writeBatch(db);
   const txRef = doc(txCol);
   batch.set(txRef, { ...data, createdAt: nowISO() });
-  batch.update(doc(itemsCol, data.itemId), { stock: increment(stockDelta(data.type, data.qty)), lastTxId: txRef.id });
+  batch.update(doc(itemsCol, data.itemId), {
+    stock: increment(stockDelta(data.type, data.qty)),
+    lastTxId: txRef.id,
+    ...(expiry === undefined ? {} : { expiry: expiry ?? deleteField() }),
+  });
   if (data.voidsTxId) batch.update(doc(txCol, data.voidsTxId), { voidedBy: txRef.id });
   return { id: txRef.id, done: batch.commit() };
 }

@@ -30,6 +30,10 @@ service cloud.firestore {
     function delta(tx) {
       return tx.type == 'masuk' ? tx.qty : -tx.qty;
     }
+    // ED berformat "YYYY-MM", atau dihapus
+    function validExpiry(data) {
+      return !('expiry' in data) || (data.expiry is string && data.expiry.matches('^[0-9]{4}-(0[1-9]|1[0-2])$'));
+    }
 
     match /users/{userEmail} {
       allow read: if isAdmin() || (request.auth != null && userEmail == email());
@@ -48,9 +52,15 @@ service cloud.firestore {
       allow read: if isStaff();
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
+        // Petugas boleh memperbarui ED saja
         isStaff()
-        // Petugas hanya mengubah stok, lewat transaksi baru yang dibuat dalam batch yang sama
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'lastTxId'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiry'])
+        && validExpiry(request.resource.data)
+      ) || (
+        isStaff()
+        // Petugas hanya mengubah stok (dan ED) lewat transaksi baru yang dibuat dalam batch yang sama
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'lastTxId', 'expiry'])
+        && validExpiry(request.resource.data)
         && request.resource.data.lastTxId is string
         && !exists(/databases/$(database)/documents/transactions/$(request.resource.data.lastTxId))
         && existsAfter(/databases/$(database)/documents/transactions/$(request.resource.data.lastTxId))
@@ -64,7 +74,7 @@ service cloud.firestore {
 
       allow create: if isStaff()
         && request.resource.data.keys().hasOnly(
-             ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt', 'voidsTxId'])
+             ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt', 'voidsTxId', 'expiry'])
         && request.resource.data.keys().hasAll(
              ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt'])
         && request.resource.data.type in ['masuk', 'keluar']
@@ -75,6 +85,7 @@ service cloud.firestore {
         && request.resource.data.operator is string
         && request.resource.data.createdAt is string
         && request.resource.data.email == email()
+        && validExpiry(request.resource.data)
         // Stok item harus ikut diperbarui dalam batch yang sama
         && getAfter(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data.lastTxId == txId
         // Transaksi pembatalan harus menandai transaksi aslinya dalam batch yang sama

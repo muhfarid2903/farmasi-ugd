@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ExpiryPicker } from "../../components/ExpiryPicker";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import type { ItemData } from "../../lib/repository";
@@ -14,7 +15,15 @@ interface ItemFormModalProps {
   onClose: () => void;
 }
 
-const emptyForm: ItemForm = { name: "", category: "Obat", unit: "tablet", stock: "", minStock: "", kritis: false };
+const emptyForm: ItemForm = {
+  name: "",
+  category: "Obat",
+  unit: "tablet",
+  stock: "",
+  minStock: "",
+  kritis: false,
+  expiry: "",
+};
 
 export function ItemFormModal({ editItem, onSubmit, onDelete, onClose }: ItemFormModalProps) {
   const [form, setForm] = useState<ItemForm>(() =>
@@ -26,6 +35,7 @@ export function ItemFormModal({ editItem, onSubmit, onDelete, onClose }: ItemFor
           stock: String(editItem.stock),
           minStock: String(editItem.minStock),
           kritis: editItem.kritis ?? false,
+          expiry: editItem.expiry ?? "",
         }
       : emptyForm,
   );
@@ -45,6 +55,7 @@ export function ItemFormModal({ editItem, onSubmit, onDelete, onClose }: ItemFor
         stock: Number(form.stock),
         minStock: Number(form.minStock),
         kritis: form.kritis,
+        expiry: form.expiry,
       },
       editItem,
     );
@@ -155,6 +166,10 @@ export function ItemFormModal({ editItem, onSubmit, onDelete, onClose }: ItemFor
                 onChange={(e) => set("minStock", e.target.value)}
               />
             </div>
+          </div>
+          <div className="form-group">
+            <div className="form-label">Tanggal kedaluwarsa terdekat (ED)</div>
+            <ExpiryPicker value={form.expiry} onChange={(v) => set("expiry", v)} idPrefix="item-ed" />
           </div>
           <div className="form-group">
             <label className="form-label">Obat darurat?</label>

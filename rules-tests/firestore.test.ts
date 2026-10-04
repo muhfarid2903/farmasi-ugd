@@ -5,7 +5,17 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, increment, setDoc, updateDoc, deleteDoc, writeBatch, type Firestore } from "firebase/firestore";
+import {
+  deleteDoc,
+  deleteField,
+  doc,
+  getDoc,
+  increment,
+  setDoc,
+  updateDoc,
+  writeBatch,
+  type Firestore,
+} from "firebase/firestore";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
@@ -161,6 +171,38 @@ describe("pembatalan transaksi", () => {
     b.set(doc(db, "transactions", "v1"), voidOf(ANI));
     b.update(doc(db, "items", "epi"), { stock: increment(-4), lastTxId: "v1" });
     await assertFails(b.commit());
+  });
+});
+
+describe("tanggal kedaluwarsa (ED)", () => {
+  it("petugas boleh memperbarui atau menghapus ED saja", async () => {
+    await assertSucceeds(updateDoc(doc(as(ANI), "items", "epi"), { expiry: "2027-03" }));
+    await assertSucceeds(updateDoc(doc(as(ANI), "items", "epi"), { expiry: deleteField() }));
+  });
+  it("format ED harus YYYY-MM", async () => {
+    await assertFails(updateDoc(doc(as(ANI), "items", "epi"), { expiry: "Maret 2027" }));
+    await assertFails(updateDoc(doc(as(ANI), "items", "epi"), { expiry: "2027-13" }));
+  });
+  it("memperbarui ED tidak bisa sekalian mengubah stok atau data lain", async () => {
+    await assertFails(updateDoc(doc(as(ANI), "items", "epi"), { expiry: "2027-03", stock: 99 }));
+    await assertFails(updateDoc(doc(as(ANI), "items", "epi"), { expiry: "2027-03", kritis: false }));
+  });
+  it("barang masuk boleh sekalian mencatat ED pada transaksi & barang", async () => {
+    const db = as(ANI);
+    const b = writeBatch(db);
+    b.set(doc(db, "transactions", "t1"), txBase(ANI, { type: "masuk", qty: 3, expiry: "2027-03" }));
+    b.update(doc(db, "items", "epi"), { stock: increment(3), lastTxId: "t1", expiry: "2027-03" });
+    await assertSucceeds(b.commit());
+  });
+  it("barang keluar sampai habis boleh sekalian mengosongkan ED", async () => {
+    const db = as(ANI);
+    const b = writeBatch(db);
+    b.set(doc(db, "transactions", "t1"), txBase(ANI, { qty: 10 }));
+    b.update(doc(db, "items", "epi"), { stock: increment(-10), lastTxId: "t1", expiry: deleteField() });
+    await assertSucceeds(b.commit());
+  });
+  it("ED tidak valid pada transaksi ditolak", async () => {
+    await assertFails(txBatch(as(ANI), "t1", txBase(ANI, { type: "masuk", qty: 3, expiry: "besok" }), 3));
   });
 });
 

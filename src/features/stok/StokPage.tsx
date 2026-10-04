@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../components/Icon";
 import { ShowMoreButton } from "../../components/ShowMore";
 import { useShowMore } from "../../hooks/useShowMore";
+import { todayStr } from "../../lib/date";
+import { expiryStatus, expiryText, formatExpiry } from "../../lib/expiry";
 import { searchItems } from "../../lib/search";
 import { filterItems, stockStatus, type StockFilter, type StockStatus } from "../../lib/stock";
 import { CATEGORIES, type Item } from "../../types";
@@ -12,6 +14,10 @@ interface StokPageProps {
   isAdmin: boolean;
   onAddItem: () => void;
   onEditItem: (item: Item) => void;
+  /** Perbarui ED; boleh untuk semua petugas. */
+  onEditExpiry: (item: Item) => void;
+  /** Saringan awal, mis. saat dibuka dari peringatan di Beranda. */
+  initialFilter?: StockFilter;
 }
 
 const FILTERS: { value: StockFilter; label: string }[] = [
@@ -19,6 +25,7 @@ const FILTERS: { value: StockFilter; label: string }[] = [
   { value: "darurat", label: "Obat darurat" },
   { value: "hampir", label: "Hampir habis" },
   { value: "habis", label: "Habis" },
+  { value: "ed", label: "ED dekat / lewat" },
 ];
 
 const STATUS: Record<StockStatus, { label: string; icon: "alert" | "check" }> = {
@@ -27,7 +34,23 @@ const STATUS: Record<StockStatus, { label: string; icon: "alert" | "check" }> = 
   cukup: { label: "Cukup", icon: "check" },
 };
 
-function StockCard({ item, onEdit }: { item: Item; onEdit?: () => void }) {
+function ExpiryLine({ item }: { item: Item }) {
+  if (!item.expiry) return <div className="stock-card-meta">ED: belum diisi</div>;
+  const st = item.stock > 0 ? expiryStatus(item.expiry, todayStr()) : "aman";
+  return (
+    <div className={`stock-card-meta expiry-${st}`}>
+      ED: <b>{formatExpiry(item.expiry)}</b>
+      {st !== "aman" && (
+        <>
+          {" "}
+          · <Icon type="alert" size={14} /> {expiryText(item.expiry, todayStr())}
+        </>
+      )}
+    </div>
+  );
+}
+
+function StockCard({ item, onEdit, onEditExpiry }: { item: Item; onEdit?: () => void; onEditExpiry: () => void }) {
   const status = stockStatus(item);
   return (
     <div className={`stock-card status-${status}`}>
@@ -42,6 +65,7 @@ function StockCard({ item, onEdit }: { item: Item; onEdit?: () => void }) {
             Batas minimum {item.minStock} {item.unit}
           </div>
         )}
+        <ExpiryLine item={item} />
       </div>
       <div className="stock-card-side">
         <div className="stock-card-count">
@@ -50,19 +74,31 @@ function StockCard({ item, onEdit }: { item: Item; onEdit?: () => void }) {
         <span className={`status-pill ${status}`}>
           <Icon type={STATUS[status].icon} size={14} /> {STATUS[status].label}
         </span>
-        {onEdit && (
-          <button className="btn btn-ghost btn-sm" onClick={onEdit}>
-            <Icon type="edit" size={16} /> Ubah
+        <div className="stock-card-buttons">
+          <button className="btn btn-ghost btn-sm" onClick={onEditExpiry}>
+            <Icon type="clock" size={16} /> Ubah ED
           </button>
-        )}
+          {onEdit && (
+            <button className="btn btn-ghost btn-sm" onClick={onEdit}>
+              <Icon type="edit" size={16} /> Ubah
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export function StokPage({ items, isAdmin, onAddItem, onEditItem }: StokPageProps) {
+export function StokPage({
+  items,
+  isAdmin,
+  onAddItem,
+  onEditItem,
+  onEditExpiry,
+  initialFilter = "semua",
+}: StokPageProps) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<StockFilter>("semua");
+  const [filter, setFilter] = useState<StockFilter>(initialFilter);
   const [category, setCategory] = useState("Semua");
 
   const filtered = useMemo(() => {
@@ -132,7 +168,12 @@ export function StokPage({ items, isAdmin, onAddItem, onEditItem }: StokPageProp
       ) : (
         <div className="card-list">
           {visible.map((item) => (
-            <StockCard key={item.id} item={item} onEdit={isAdmin ? () => onEditItem(item) : undefined} />
+            <StockCard
+              key={item.id}
+              item={item}
+              onEdit={isAdmin ? () => onEditItem(item) : undefined}
+              onEditExpiry={() => onEditExpiry(item)}
+            />
           ))}
         </div>
       )}
