@@ -46,14 +46,14 @@ describe("buildRecapCSV", () => {
   });
   it("mengurutkan per tanggal dan meng-escape sel", () => {
     const csv = buildRecapCSV(
-      [tx({ id: "2", date: "2026-10-03", type: "masuk" }), tx({ id: "1" })],
+      [tx({ id: "2", date: "2026-10-03", type: "masuk", voidedBy: "3" }), tx({ id: "1" })],
       "Oktober 2026",
       new Date(2026, 9, 5),
     );
     const lines = csv.trim().split("\n");
     expect(lines[1]).toBe("Periode: Oktober 2026");
     expect(lines[2]).toBe("Total Transaksi: 2 (Masuk: 1 | Keluar: 1)");
-    expect(lines[6]).toBe('1,2026-10-02,"NaCl 0,9%",Keluar,2,,Ani');
-    expect(lines[7]).toBe('2,2026-10-03,"NaCl 0,9%",Masuk,2,,Ani');
+    expect(lines[6]).toBe('1,2026-10-02,"NaCl 0,9%",Keluar,2,,Ani,');
+    expect(lines[7]).toBe('2,2026-10-03,"NaCl 0,9%",Masuk,2,,Ani,Dibatalkan');
   });
 });

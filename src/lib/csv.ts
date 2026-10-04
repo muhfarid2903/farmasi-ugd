@@ -16,9 +16,18 @@ export function buildRecapCSV(txs: Transaction[], periodLabel: string, exportedA
     csvCell(`Total Transaksi: ${txs.length} (Masuk: ${masuk} | Keluar: ${keluar})`),
     csvCell(`Diekspor: ${exportedAt.toLocaleString("id-ID")}`),
     "",
-    "No,Tanggal,Item,Tipe,Jumlah,Keterangan,Petugas",
+    "No,Tanggal,Item,Tipe,Jumlah,Keterangan,Petugas,Status",
     ...sorted.map((t, i) =>
-      [i + 1, t.date, t.itemName, t.type === "masuk" ? "Masuk" : "Keluar", t.qty, t.note ?? "", t.operator]
+      [
+        i + 1,
+        t.date,
+        t.itemName,
+        t.type === "masuk" ? "Masuk" : "Keluar",
+        t.qty,
+        t.note ?? "",
+        t.operator,
+        t.voidedBy ? "Dibatalkan" : t.voidsTxId ? "Pembatalan" : "",
+      ]
         .map(csvCell)
         .join(","),
     ),

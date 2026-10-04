@@ -17,7 +17,10 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
     "seed": "node scripts/seed.mjs",
     "icons": "pwa-assets-generator",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project farmasi-ugd-test \"vitest run --config vitest.rules.config.ts\"",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "add-user": "node scripts/add-user.mjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",
@@ -26,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -34,6 +38,7 @@
     "eslint": "^10.12.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
+    "firebase-tools": "^15.32.1",
     "globals": "^17.13.0",
     "prettier": "^3.9.9",
     "typescript": "^6.0.3",

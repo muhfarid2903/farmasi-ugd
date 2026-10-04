@@ -7,17 +7,19 @@ import {
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   updateDoc,
   writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { Item, Transaction } from "../types";
+import type { Item, Transaction, UserProfile } from "../types";
 import { nowISO } from "./date";
-import { stockChanges } from "./stock";
 import { db } from "./firebase";
+import { stockDelta, type TxData } from "./stock";
 
 const itemsCol = collection(db, "items");
 const txCol = collection(db, "transactions");
+const usersCol = collection(db, "users");
 
 export interface SnapshotMeta {
   /** true jika data berasal dari cache lokal dan belum terkonfirmasi server. */
@@ -58,7 +60,7 @@ export function subscribeTransactions(
   );
 }
 
-export type ItemData = Omit<Item, "id" | "createdAt">;
+export type ItemData = Omit<Item, "id" | "createdAt" | "lastTxId">;
 
 export async function addItem(data: ItemData): Promise<void> {
   await addDoc(itemsCol, { ...data, createdAt: nowISO() });
@@ -73,25 +75,53 @@ export async function deleteItem(id: string): Promise<void> {
   await deleteDoc(doc(itemsCol, id));
 }
 
-export type TxData = Omit<Transaction, "id" | "createdAt">;
-
 /**
- * Simpan transaksi baru, atau edit transaksi lama, beserta perubahan stoknya.
+ * Simpan transaksi baru beserta perubahan stoknya dalam satu batch.
  *
  * Memakai writeBatch + increment() (bukan runTransaction) supaya:
  * - tetap bisa dicatat saat offline dan terkirim otomatis saat sinyal kembali;
  * - stok dan catatan transaksi tersimpan bersamaan atau tidak sama sekali;
  * - dua perangkat yang menyimpan bersamaan tidak saling menimpa stok.
+ * `lastTxId` dipakai aturan keamanan untuk memastikan stok hanya berubah lewat transaksi.
  *
- * Tidak menunggu konfirmasi server: saat offline, Promise dari commit() baru selesai
- * setelah tersinkron, padahal perubahan sudah langsung berlaku di cache lokal.
+ * Jika `voids` diisi, transaksi asli ikut ditandai sudah dibatalkan.
+ * Tidak perlu menunggu Promise-nya: saat offline, Promise baru selesai setelah tersinkron,
+ * padahal perubahan sudah langsung berlaku di cache lokal.
  */
-export function saveTransaction(data: TxData, prev?: Transaction): Promise<void> {
+export function saveTransaction(data: TxData): Promise<void> {
   const batch = writeBatch(db);
-  for (const [itemId, delta] of stockChanges(data, prev)) {
-    batch.update(doc(itemsCol, itemId), { stock: increment(delta) });
-  }
-  if (prev) batch.update(doc(txCol, prev.id), { ...data });
-  else batch.set(doc(txCol), { ...data, createdAt: nowISO() });
+  const txRef = doc(txCol);
+  batch.set(txRef, { ...data, createdAt: nowISO() });
+  batch.update(doc(itemsCol, data.itemId), { stock: increment(stockDelta(data.type, data.qty)), lastTxId: txRef.id });
+  if (data.voidsTxId) batch.update(doc(txCol, data.voidsTxId), { voidedBy: txRef.id });
   return batch.commit();
+}
+
+export function subscribeProfile(
+  email: string,
+  onData: (profile: UserProfile | null) => void,
+  onError: (e: Error) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(usersCol, email),
+    (snap) => onData(snap.exists() ? ({ email: snap.id, ...snap.data() } as UserProfile) : null),
+    onError,
+  );
+}
+
+export function subscribeUsers(onData: (users: UserProfile[]) => void, onError: (e: Error) => void): Unsubscribe {
+  return onSnapshot(
+    usersCol,
+    (snap) =>
+      onData(
+        snap.docs
+          .map((d) => ({ email: d.id, ...d.data() }) as UserProfile)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      ),
+    onError,
+  );
+}
+
+export function saveUser({ email, ...data }: UserProfile): Promise<void> {
+  return setDoc(doc(usersCol, email.trim().toLowerCase()), { ...data, createdAt: data.createdAt ?? nowISO() });
 }

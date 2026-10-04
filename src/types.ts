@@ -35,6 +35,8 @@ export interface Item {
   minStock: number;
   kritis: boolean;
   createdAt?: string;
+  /** Transaksi terakhir yang mengubah stok; dipakai aturan keamanan untuk memverifikasi perubahan stok. */
+  lastTxId?: string;
 }
 
 /** Dokumen di koleksi `transactions`. `date` berformat YYYY-MM-DD (tanggal lokal). */
@@ -47,10 +49,27 @@ export interface Transaction {
   date: string;
   note: string;
   operator: string;
+  /** Email akun yang mencatat (kosong untuk transaksi sebelum ada login). */
+  email?: string;
   createdAt: string;
+  /** Diisi pada transaksi pembatalan: id transaksi yang dibatalkan. */
+  voidsTxId?: string;
+  /** Diisi pada transaksi yang sudah dibatalkan: id transaksi pembatalannya. */
+  voidedBy?: string;
 }
 
-export type Page = "dashboard" | "stok" | "transaksi";
+export type Role = "admin" | "petugas";
+
+/** Dokumen di koleksi `users`, dengan id = email (huruf kecil). */
+export interface UserProfile {
+  email: string;
+  name: string;
+  role: Role;
+  active: boolean;
+  createdAt?: string;
+}
+
+export type Page = "dashboard" | "stok" | "transaksi" | "petugas";
 
 /** online = tersambung; pending = ada perubahan lokal belum terkirim; offline = memakai cache lokal. */
 export type SyncStatus = "loading" | "online" | "pending" | "offline";

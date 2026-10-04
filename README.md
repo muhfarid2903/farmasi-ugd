@@ -59,6 +59,27 @@ tests/           tes Vitest
 scripts/         seed data awal
 ```
 
+## Login & keamanan
+
+- Petugas masuk dengan **akun Google**. Hanya email yang terdaftar dan aktif di koleksi `users`
+  (menu **Petugas**, khusus admin) yang bisa membuka aplikasi.
+- **Petugas** mencatat barang masuk/keluar dan membatalkan transaksinya sendiri. **Admin** juga
+  mengelola item, membatalkan transaksi siapa pun, dan mengelola petugas.
+- Transaksi **tidak bisa diubah atau dihapus**. Kesalahan dibetulkan dengan _pembatalan_: transaksi
+  balik yang mengembalikan stok, sementara transaksi asli tetap tersimpan sebagai jejak.
+- `firestore.rules` menegakkan semua aturan di atas di server, termasuk: stok hanya boleh berubah
+  bersamaan dengan transaksi baru dan besarnya harus sama dengan jumlah transaksi itu.
+  Aturan ini diuji di `rules-tests/` dan dijalankan di CI.
+
+Mendaftarkan admin pertama (sebelum aturan keamanan diterbitkan):
+
+```bash
+npm run add-user -- nama@gmail.com "Nama Admin" admin
+```
+
+Di Firebase Console: **Authentication → Sign-in method → Google** harus aktif, dan domain
+`muhfarid2903.github.io` harus ada di **Authentication → Settings → Authorized domains**.
+
 ## Deploy
 
 Setiap push ke `main` otomatis dicek (typecheck, lint, format, tes), di-build, lalu diterbitkan ke

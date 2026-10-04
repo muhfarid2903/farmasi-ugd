@@ -6,11 +6,12 @@ import { TxTable } from "./TxTable";
 interface TransaksiPageProps {
   transactions: Transaction[];
   onNewTx: (type: TxType) => void;
-  onEditTx: (tx: Transaction) => void;
+  canVoid: (tx: Transaction) => boolean;
+  onVoidTx: (tx: Transaction) => void;
   onExport: () => void;
 }
 
-export function TransaksiPage({ transactions, onNewTx, onEditTx, onExport }: TransaksiPageProps) {
+export function TransaksiPage({ transactions, onNewTx, canVoid, onVoidTx, onExport }: TransaksiPageProps) {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"semua" | TxType>("semua");
 
@@ -56,7 +57,7 @@ export function TransaksiPage({ transactions, onNewTx, onEditTx, onExport }: Tra
         </button>
       </div>
       <div className="panel">
-        <TxTable transactions={filtered} onEdit={onEditTx} emptyText="Tidak ada transaksi" />
+        <TxTable transactions={filtered} canVoid={canVoid} onVoid={onVoidTx} emptyText="Tidak ada transaksi" />
       </div>
     </>
   );

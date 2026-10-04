@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 // Konfigurasi web Firebase bersifat publik (bukan rahasia); keamanan data diatur oleh Firestore Security Rules.
@@ -13,6 +14,9 @@ const firebaseConfig = {
 };
 
 export const app = initializeApp(firebaseConfig);
+
+// Sesi login tersimpan di perangkat, jadi petugas tetap masuk walau aplikasi dibuka tanpa sinyal.
+export const auth = getAuth(app);
 
 // Cache lokal persisten: data tetap tampil dan transaksi tetap bisa dicatat saat sinyal hilang,
 // lalu otomatis terkirim ke server begitu koneksi kembali.

@@ -5,29 +5,40 @@ import { SyncBadge } from "./components/SyncBadge";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { ExportModal } from "./features/laporan/ExportModal";
+import { PetugasPage } from "./features/petugas/PetugasPage";
 import { ItemFormModal } from "./features/stok/ItemFormModal";
 import { StokPage } from "./features/stok/StokPage";
 import { TransaksiPage } from "./features/transaksi/TransaksiPage";
 import { TxFormModal } from "./features/transaksi/TxFormModal";
+import { VoidTxModal } from "./features/transaksi/VoidTxModal";
+import { logout } from "./hooks/useAuth";
 import { useInventory } from "./hooks/useInventory";
+import { todayStr } from "./lib/date";
 import * as repo from "./lib/repository";
-import { isLowStock } from "./lib/stock";
-import type { Item, Page, Transaction, TxType } from "./types";
+import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type TxData } from "./lib/stock";
+import type { Item, Page, Transaction, TxType, UserProfile } from "./types";
 
 type ModalState =
-  { kind: "tx"; type: TxType; editTx?: Transaction } | { kind: "item"; editItem?: Item } | { kind: "export" } | null;
+  | { kind: "tx"; type: TxType }
+  | { kind: "void"; tx: Transaction }
+  | { kind: "item"; editItem?: Item }
+  | { kind: "export" }
+  | null;
 
-const NAV: { page: Page; label: string; short: string; icon: IconName }[] = [
+const NAV: { page: Page; label: string; short: string; icon: IconName; adminOnly?: boolean }[] = [
   { page: "dashboard", label: "Dashboard", short: "Home", icon: "home" },
   { page: "stok", label: "Data Stok", short: "Stok", icon: "package" },
   { page: "transaksi", label: "Transaksi", short: "Transaksi", icon: "clock" },
+  { page: "petugas", label: "Petugas", short: "Petugas", icon: "users", adminOnly: true },
 ];
 
-export default function App() {
+export default function App({ profile }: { profile: UserProfile }) {
   const { items, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("dashboard");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const isAdmin = profile.role === "admin";
+  const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
 
   const notify = useCallback((text: string, kind: ToastMessage["kind"]) => {
     setToast({ id: Date.now(), text, kind });
@@ -50,8 +61,15 @@ export default function App() {
     [notify],
   );
 
-  function handleSaveTx(data: repo.TxData, prev?: Transaction) {
-    write(repo.saveTransaction(data, prev), prev ? "Transaksi diperbarui" : "Transaksi tersimpan");
+  const userCanVoid = useCallback((tx: Transaction) => canVoid(tx, profile), [profile]);
+
+  function handleSaveTx(data: Omit<TxData, "operator" | "email">) {
+    write(repo.saveTransaction({ ...data, operator: profile.name, email: profile.email }), "Transaksi tersimpan");
+    setModal(null);
+  }
+
+  function handleVoidTx(tx: Transaction, reason: string) {
+    write(repo.saveTransaction(voidTxData(tx, profile, todayStr(), reason)), "Transaksi dibatalkan");
     setModal(null);
   }
 
@@ -74,8 +92,12 @@ export default function App() {
     write(repo.updateItem(item.id, { kritis: !item.kritis }), item.kritis ? "Tanda kritis dilepas" : "Ditandai kritis");
   }
 
+  function handleSaveUser(user: UserProfile, isNew: boolean) {
+    write(repo.saveUser(user), isNew ? `${user.name} ditambahkan` : `${user.name} diperbarui`);
+  }
+
   const openNewTx = (type: TxType) => setModal({ kind: "tx", type });
-  const openEditTx = (tx: Transaction) => setModal({ kind: "tx", type: tx.type, editTx: tx });
+  const openVoidTx = (tx: Transaction) => setModal({ kind: "void", tx });
   const openAddItem = () => setModal({ kind: "item" });
   const openExport = () => setModal({ kind: "export" });
 
@@ -92,13 +114,26 @@ export default function App() {
   }
 
   const lowCount = items.filter(isLowStock).length;
+  const voidPreview = modal?.kind === "void" ? voidTxData(modal.tx, profile, todayStr(), "") : null;
 
   return (
     <div className="app">
-      <Header right={<SyncBadge status={syncStatus} />} />
+      <Header
+        right={
+          <>
+            <SyncBadge status={syncStatus} />
+            <div className="user-chip" title={profile.email}>
+              <span className="user-name">{profile.name}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => logout()} aria-label="Keluar" title="Keluar">
+                <Icon type="logout" size={14} />
+              </button>
+            </div>
+          </>
+        }
+      />
       <div className="main-area">
         <nav className="sidebar">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button
               key={n.page}
               className={`nav-btn${page === n.page ? " active" : ""}`}
@@ -116,14 +151,16 @@ export default function App() {
               items={items}
               transactions={transactions}
               onNewTx={openNewTx}
-              onEditTx={openEditTx}
-              onAddItem={openAddItem}
+              canVoid={userCanVoid}
+              onVoidTx={openVoidTx}
+              onAddItem={isAdmin ? openAddItem : undefined}
               onExport={openExport}
             />
           )}
           {page === "stok" && (
             <StokPage
               items={items}
+              isAdmin={isAdmin}
               onAddItem={openAddItem}
               onEditItem={(item) => setModal({ kind: "item", editItem: item })}
               onDeleteItem={handleDeleteItem}
@@ -134,16 +171,18 @@ export default function App() {
             <TransaksiPage
               transactions={transactions}
               onNewTx={openNewTx}
-              onEditTx={openEditTx}
+              canVoid={userCanVoid}
+              onVoidTx={openVoidTx}
               onExport={openExport}
             />
           )}
+          {page === "petugas" && isAdmin && <PetugasPage currentEmail={profile.email} onSave={handleSaveUser} />}
         </main>
       </div>
 
       <nav className="mobile-nav">
         <div className="mobile-nav-inner">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button
               key={n.page}
               className={`mobile-nav-btn${page === n.page ? " active" : ""}`}
@@ -158,9 +197,17 @@ export default function App() {
       {modal?.kind === "tx" && (
         <TxFormModal
           items={items}
-          editTx={modal.editTx}
           initialType={modal.type}
+          operatorName={profile.name}
           onSubmit={handleSaveTx}
+          onClose={closeModal}
+        />
+      )}
+      {modal?.kind === "void" && voidPreview && (
+        <VoidTxModal
+          tx={modal.tx}
+          blockedReason={validateStockChanges(stockChanges(voidPreview), items)}
+          onConfirm={(reason) => handleVoidTx(modal.tx, reason)}
           onClose={closeModal}
         />
       )}

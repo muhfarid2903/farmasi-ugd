@@ -1,0 +1,98 @@
+rules_version = '2';
+
+// Aturan keamanan Farmasi UGD.
+//
+// - Hanya petugas terdaftar (users/{email}, aktif) yang bisa membaca dan menulis.
+// - Transaksi tidak bisa diubah atau dihapus. Kesalahan dibetulkan dengan transaksi pembatalan.
+// - Stok item hanya boleh berubah bersamaan dengan transaksi baru, dan besar perubahannya harus
+//   sama dengan jumlah transaksi itu. Admin boleh mengubah item secara langsung.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function email() {
+      return request.auth.token.email.lower();
+    }
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(email())).data;
+    }
+    function isStaff() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/users/$(email()))
+        && profile().active == true;
+    }
+    function isAdmin() {
+      return isStaff() && profile().role == 'admin';
+    }
+    function txAfter(txId) {
+      return getAfter(/databases/$(database)/documents/transactions/$(txId)).data;
+    }
+    function delta(tx) {
+      return tx.type == 'masuk' ? tx.qty : -tx.qty;
+    }
+
+    match /users/{userEmail} {
+      allow read: if isAdmin() || (request.auth != null && userEmail == email());
+      allow create, update: if isAdmin()
+        && userEmail == userEmail.lower()
+        && request.resource.data.keys().hasOnly(['name', 'role', 'active', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.role in ['admin', 'petugas']
+        && request.resource.data.active is bool
+        // Admin tidak bisa menonaktifkan atau menurunkan dirinya sendiri
+        && (userEmail != email() || (request.resource.data.role == 'admin' && request.resource.data.active == true));
+      allow delete: if false;
+    }
+
+    match /items/{itemId} {
+      allow read: if isStaff();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isStaff()
+        // Petugas hanya mengubah stok, lewat transaksi baru yang dibuat dalam batch yang sama
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'lastTxId'])
+        && request.resource.data.lastTxId is string
+        && !exists(/databases/$(database)/documents/transactions/$(request.resource.data.lastTxId))
+        && existsAfter(/databases/$(database)/documents/transactions/$(request.resource.data.lastTxId))
+        && txAfter(request.resource.data.lastTxId).itemId == itemId
+        && request.resource.data.stock - resource.data.stock == delta(txAfter(request.resource.data.lastTxId))
+      );
+    }
+
+    match /transactions/{txId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && request.resource.data.keys().hasOnly(
+             ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt', 'voidsTxId'])
+        && request.resource.data.keys().hasAll(
+             ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt'])
+        && request.resource.data.type in ['masuk', 'keluar']
+        && request.resource.data.qty is int && request.resource.data.qty > 0
+        && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.itemName is string
+        && request.resource.data.note is string
+        && request.resource.data.operator is string
+        && request.resource.data.createdAt is string
+        && request.resource.data.email == email()
+        // Stok item harus ikut diperbarui dalam batch yang sama
+        && getAfter(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data.lastTxId == txId
+        // Transaksi pembatalan harus menandai transaksi aslinya dalam batch yang sama
+        && (!('voidsTxId' in request.resource.data) || txAfter(request.resource.data.voidsTxId).get('voidedBy', '') == txId);
+
+      // Satu-satunya perubahan: menandai transaksi sebagai dibatalkan, sekali saja,
+      // oleh pembuatnya atau admin, bersamaan dengan transaksi pembatalannya.
+      allow update: if isStaff()
+        && (isAdmin() || resource.data.get('email', '') == email())
+        && !('voidedBy' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voidedBy'])
+        && txAfter(request.resource.data.voidedBy).get('voidsTxId', '') == txId
+        // Pembatalan = item dan jumlah sama, tipe berlawanan
+        && txAfter(request.resource.data.voidedBy).itemId == resource.data.itemId
+        && txAfter(request.resource.data.voidedBy).qty == resource.data.qty
+        && txAfter(request.resource.data.voidedBy).type != resource.data.type;
+
+      allow delete: if false;
+    }
+  }
+}

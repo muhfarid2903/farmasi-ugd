@@ -88,6 +88,27 @@ const paths = {
       <circle cx="12" cy="20" r="1" />
     </>
   ),
+  undo: (
+    <>
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h11a5 5 0 010 10h-3" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </>
+  ),
+  users: (
+    <>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 21v-1a6 6 0 0112 0v1" />
+      <path d="M16 3.5a4 4 0 010 9" />
+      <path d="M22 21v-1a6 6 0 00-4-5.6" />
+    </>
+  ),
 } satisfies Record<string, ReactElement>;
 
 export type IconName = keyof typeof paths;

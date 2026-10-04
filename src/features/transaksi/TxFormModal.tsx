@@ -2,35 +2,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { todayStr } from "../../lib/date";
-import type { TxData } from "../../lib/repository";
-import { isLowStock, stockChanges, validateStockChanges, validateTxForm, type TxForm } from "../../lib/stock";
-import type { Item, Transaction, TxType } from "../../types";
+import {
+  isLowStock,
+  stockChanges,
+  validateStockChanges,
+  validateTxForm,
+  type TxData,
+  type TxForm,
+} from "../../lib/stock";
+import type { Item, TxType } from "../../types";
 
 const MAX_RESULTS = 50;
 
 interface TxFormModalProps {
   items: Item[];
-  /** Transaksi yang diedit; kosong berarti transaksi baru. */
-  editTx?: Transaction;
   initialType: TxType;
-  onSubmit: (data: TxData, prev?: Transaction) => void;
+  /** Nama petugas dari akun yang sedang login. */
+  operatorName: string;
+  onSubmit: (data: Omit<TxData, "operator" | "email">) => void;
   onClose: () => void;
 }
 
-export function TxFormModal({ items, editTx, initialType, onSubmit, onClose }: TxFormModalProps) {
-  const [form, setForm] = useState<TxForm>(() =>
-    editTx
-      ? {
-          itemId: editTx.itemId,
-          type: editTx.type,
-          qty: String(editTx.qty),
-          date: editTx.date,
-          note: editTx.note ?? "",
-          operator: editTx.operator,
-        }
-      : { itemId: "", type: initialType, qty: "", date: todayStr(), note: "", operator: "" },
-  );
-  const [itemSearch, setItemSearch] = useState(editTx?.itemName ?? "");
+export function TxFormModal({ items, initialType, operatorName, onSubmit, onClose }: TxFormModalProps) {
+  const [form, setForm] = useState<TxForm>({ itemId: "", type: initialType, qty: "", date: todayStr(), note: "" });
+  const [itemSearch, setItemSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -64,24 +59,13 @@ export function TxFormModal({ items, editTx, initialType, onSubmit, onClose }: T
 
     const qty = Number(form.qty);
     // Dicek terhadap data terakhir di perangkat; saat offline ini adalah data cache.
-    const stockError = validateStockChanges(stockChanges({ itemId: item.id, type: form.type, qty }, editTx), items);
+    const stockError = validateStockChanges(stockChanges({ itemId: item.id, type: form.type, qty }), items);
     if (stockError) return setError(stockError);
 
-    onSubmit(
-      {
-        itemId: item.id,
-        itemName: item.name,
-        type: form.type,
-        qty,
-        date: form.date,
-        note: form.note.trim(),
-        operator: form.operator.trim(),
-      },
-      editTx,
-    );
+    onSubmit({ itemId: item.id, itemName: item.name, type: form.type, qty, date: form.date, note: form.note.trim() });
   }
 
-  const title = editTx ? "Edit Transaksi" : form.type === "masuk" ? "Catat Barang Masuk" : "Catat Barang Keluar";
+  const title = form.type === "masuk" ? "Catat Barang Masuk" : "Catat Barang Keluar";
 
   return (
     <Modal title={title} onClose={onClose}>
@@ -190,16 +174,8 @@ export function TxFormModal({ items, editTx, initialType, onSubmit, onClose }: T
         </div>
       </div>
       <div className="form-group">
-        <label className="form-label" htmlFor="tx-operator">
-          Petugas
-        </label>
-        <input
-          id="tx-operator"
-          className="form-input"
-          placeholder="Nama perawat/petugas"
-          value={form.operator}
-          onChange={(e) => set("operator", e.target.value)}
-        />
+        <label className="form-label">Petugas</label>
+        <div className="form-static">{operatorName}</div>
       </div>
       <div className="form-group">
         <label className="form-label" htmlFor="tx-note">
@@ -218,7 +194,7 @@ export function TxFormModal({ items, editTx, initialType, onSubmit, onClose }: T
           Batal
         </button>
         <button className="btn btn-primary" onClick={handleSubmit}>
-          <Icon type="check" size={16} /> {editTx ? "Simpan Perubahan" : "Simpan"}
+          <Icon type="check" size={16} /> Simpan
         </button>
       </div>
     </Modal>

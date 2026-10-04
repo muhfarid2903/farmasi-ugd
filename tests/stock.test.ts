@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  canVoid,
   filterByPeriod,
   isLowStock,
   stockChanges,
   validateItemForm,
   validateStockChanges,
   validateTxForm,
+  voidTxData,
   type ItemForm,
   type TxForm,
 } from "../src/lib/stock";
@@ -34,64 +36,79 @@ describe("isLowStock", () => {
 });
 
 describe("stockChanges", () => {
-  it("transaksi baru: masuk menambah, keluar mengurangi", () => {
+  it("masuk menambah, keluar mengurangi", () => {
     expect(stockChanges({ itemId: "a", type: "masuk", qty: 5 })).toEqual(new Map([["a", 5]]));
     expect(stockChanges({ itemId: "a", type: "keluar", qty: 2 })).toEqual(new Map([["a", -2]]));
-  });
-  it("edit jumlah pada item yang sama hanya menerapkan selisihnya", () => {
-    const prev = { itemId: "a", type: "masuk" as const, qty: 10 };
-    expect(stockChanges({ itemId: "a", type: "masuk", qty: 7 }, prev)).toEqual(new Map([["a", -3]]));
-  });
-  it("edit tipe masuk → keluar membalik dua kali lipat", () => {
-    const prev = { itemId: "a", type: "masuk" as const, qty: 4 };
-    expect(stockChanges({ itemId: "a", type: "keluar", qty: 4 }, prev)).toEqual(new Map([["a", -8]]));
-  });
-  it("edit ganti item: item lama dibalik, item baru diterapkan", () => {
-    const prev = { itemId: "a", type: "keluar" as const, qty: 2 };
-    expect(stockChanges({ itemId: "b", type: "keluar", qty: 2 }, prev)).toEqual(
-      new Map([
-        ["a", 2],
-        ["b", -2],
-      ]),
-    );
-  });
-  it("edit tanpa perubahan tidak menghasilkan perubahan stok", () => {
-    const prev = { itemId: "a", type: "keluar" as const, qty: 2 };
-    expect(stockChanges(prev, prev).size).toBe(0);
   });
 });
 
 describe("validateStockChanges", () => {
-  const items = [item("a", 5), item("b", 1)];
+  const items = [item("a", 5)];
   it("menolak barang keluar melebihi stok", () => {
     expect(validateStockChanges(new Map([["a", -6]]), items)).toBe("Stok tidak cukup! Tersedia: 5 ampul");
   });
   it("mengizinkan stok tepat habis", () => {
     expect(validateStockChanges(new Map([["a", -5]]), items)).toBeNull();
   });
-  it("menolak edit yang membuat stok item lama negatif", () => {
-    const msg = validateStockChanges(
-      new Map([
-        ["b", -3],
-        ["a", 3],
-      ]),
-      items,
-    );
-    expect(msg).toContain("Item b menjadi negatif (-2)");
-  });
   it("menolak item yang tidak ada", () => {
     expect(validateStockChanges(new Map([["x", 1]]), items)).toBe("Item tidak ditemukan di database");
   });
 });
 
+describe("pembatalan transaksi", () => {
+  const tx: Transaction = {
+    id: "t1",
+    itemId: "a",
+    itemName: "Epinefrin",
+    type: "masuk",
+    qty: 10,
+    date: "2026-10-01",
+    note: "Dari farmasi",
+    operator: "Ani",
+    email: "ani@gmail.com",
+    createdAt: "2026-10-01T01:00:00Z",
+  };
+  const admin = { email: "admin@gmail.com", role: "admin" };
+  const ani = { email: "ani@gmail.com", role: "petugas" };
+  const budi = { email: "budi@gmail.com", role: "petugas" };
+
+  it("voidTxData membalik tipe dengan item & jumlah sama", () => {
+    expect(voidTxData(tx, { name: "Budi", email: "budi@gmail.com" }, "2026-10-05", " salah jumlah ")).toEqual({
+      itemId: "a",
+      itemName: "Epinefrin",
+      type: "keluar",
+      qty: 10,
+      date: "2026-10-05",
+      note: "Pembatalan transaksi 2026-10-01 — salah jumlah",
+      operator: "Budi",
+      email: "budi@gmail.com",
+      voidsTxId: "t1",
+    });
+  });
+  it("pembuat dan admin boleh membatalkan, petugas lain tidak", () => {
+    expect(canVoid(tx, ani)).toBe(true);
+    expect(canVoid(tx, admin)).toBe(true);
+    expect(canVoid(tx, budi)).toBe(false);
+  });
+  it("transaksi lama tanpa email hanya bisa dibatalkan admin", () => {
+    const old = { ...tx, email: undefined };
+    expect(canVoid(old, admin)).toBe(true);
+    expect(canVoid(old, ani)).toBe(false);
+  });
+  it("transaksi yang sudah dibatalkan atau transaksi pembatalan tidak bisa dibatalkan lagi", () => {
+    expect(canVoid({ ...tx, voidedBy: "t2" }, admin)).toBe(false);
+    expect(canVoid({ ...tx, voidsTxId: "t0" }, admin)).toBe(false);
+  });
+});
+
 describe("validateTxForm", () => {
-  const base: TxForm = { itemId: "a", type: "keluar", qty: "2", date: "2026-10-05", note: "", operator: "Ani" };
+  const base: TxForm = { itemId: "a", type: "keluar", qty: "2", date: "2026-10-05", note: "" };
   it("menerima isian valid", () => expect(validateTxForm(base)).toBeNull());
   it("menolak jumlah nol, negatif, atau desimal", () => {
     for (const qty of ["0", "-5", "1.5"]) expect(validateTxForm({ ...base, qty })).not.toBeNull();
   });
-  it("menolak petugas kosong atau hanya spasi", () => {
-    expect(validateTxForm({ ...base, operator: "  " })).not.toBeNull();
+  it("menolak item kosong", () => {
+    expect(validateTxForm({ ...base, itemId: "" })).toBe("Item dan jumlah wajib diisi");
   });
   it("menolak tanggal kosong", () => {
     expect(validateTxForm({ ...base, date: "" })).toBe("Tanggal wajib diisi");

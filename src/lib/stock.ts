@@ -16,18 +16,42 @@ export interface TxInput {
   qty: number;
 }
 
+/** Perubahan stok per item yang dibutuhkan untuk menyimpan transaksi baru. */
+export function stockChanges(tx: TxInput): Map<string, number> {
+  return new Map([[tx.itemId, stockDelta(tx.type, tx.qty)]]);
+}
+
+/** Data transaksi baru (tanpa id & createdAt). */
+export type TxData = Omit<Transaction, "id" | "createdAt" | "voidedBy">;
+
+/** Apakah transaksi ini masih bisa dibatalkan oleh pengguna tersebut. */
+export function canVoid(tx: Transaction, user: { email: string; role: string }): boolean {
+  if (tx.voidedBy || tx.voidsTxId) return false;
+  return user.role === "admin" || tx.email === user.email;
+}
+
 /**
- * Perubahan stok per item yang dibutuhkan untuk menyimpan transaksi baru,
- * atau mengedit transaksi lama (efek lama dibalik, efek baru diterapkan).
- * Item yang perubahannya nol tidak disertakan.
+ * Transaksi pembatalan: item dan jumlah sama, tipe berlawanan, sehingga stok kembali seperti semula.
+ * Transaksi asli tetap tersimpan sebagai jejak.
  */
-export function stockChanges(next: TxInput, prev?: TxInput): Map<string, number> {
-  const changes = new Map<string, number>();
-  const add = (id: string, delta: number) => changes.set(id, (changes.get(id) ?? 0) + delta);
-  if (prev) add(prev.itemId, -stockDelta(prev.type, prev.qty));
-  add(next.itemId, stockDelta(next.type, next.qty));
-  for (const [id, delta] of changes) if (delta === 0) changes.delete(id);
-  return changes;
+export function voidTxData(
+  orig: Transaction,
+  by: { name: string; email: string },
+  today: string,
+  reason: string,
+): TxData {
+  const r = reason.trim();
+  return {
+    itemId: orig.itemId,
+    itemName: orig.itemName,
+    type: orig.type === "masuk" ? "keluar" : "masuk",
+    qty: orig.qty,
+    date: today,
+    note: `Pembatalan transaksi ${orig.date}${r ? ` — ${r}` : ""}`,
+    operator: by.name,
+    email: by.email,
+    voidsTxId: orig.id,
+  };
 }
 
 /**
@@ -38,12 +62,7 @@ export function validateStockChanges(changes: Map<string, number>, items: Item[]
   for (const [id, delta] of changes) {
     const item = items.find((i) => i.id === id);
     if (!item) return "Item tidak ditemukan di database";
-    const result = item.stock + delta;
-    if (result < 0) {
-      return delta < 0 && changes.size === 1
-        ? `Stok tidak cukup! Tersedia: ${item.stock} ${item.unit}`
-        : `Perubahan ini membuat stok ${item.name} menjadi negatif (${result}). Barang tersebut sudah terpakai.`;
-    }
+    if (item.stock + delta < 0) return `Stok tidak cukup! Tersedia: ${item.stock} ${item.unit}`;
   }
   return null;
 }
@@ -54,12 +73,11 @@ export interface TxForm {
   qty: string;
   date: string;
   note: string;
-  operator: string;
 }
 
 /** Validasi isian form transaksi. Mengembalikan pesan kesalahan, atau null jika valid. */
 export function validateTxForm(form: TxForm): string | null {
-  if (!form.itemId || !form.qty || !form.operator.trim()) return "Item, jumlah, dan petugas wajib diisi";
+  if (!form.itemId || !form.qty) return "Item dan jumlah wajib diisi";
   const qty = Number(form.qty);
   if (!Number.isInteger(qty) || qty <= 0) return "Jumlah harus bilangan bulat lebih dari 0";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return "Tanggal wajib diisi";

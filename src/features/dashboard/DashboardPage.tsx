@@ -9,8 +9,10 @@ interface DashboardPageProps {
   items: Item[];
   transactions: Transaction[];
   onNewTx: (type: TxType) => void;
-  onEditTx: (tx: Transaction) => void;
-  onAddItem: () => void;
+  canVoid: (tx: Transaction) => boolean;
+  onVoidTx: (tx: Transaction) => void;
+  /** Kosong jika pengguna bukan admin (tombol Tambah Item disembunyikan). */
+  onAddItem?: () => void;
   onExport: () => void;
 }
 
@@ -32,7 +34,15 @@ function StockAlert({ item, critical }: { item: Item; critical: boolean }) {
   );
 }
 
-export function DashboardPage({ items, transactions, onNewTx, onEditTx, onAddItem, onExport }: DashboardPageProps) {
+export function DashboardPage({
+  items,
+  transactions,
+  onNewTx,
+  canVoid,
+  onVoidTx,
+  onAddItem,
+  onExport,
+}: DashboardPageProps) {
   const today = todayStr();
   const { critical, regular, lowCount } = useMemo(() => {
     const low = items.filter(isLowStock);
@@ -91,15 +101,17 @@ export function DashboardPage({ items, transactions, onNewTx, onEditTx, onAddIte
             <div className="qb-sub">Catat pengeluaran obat/bahan</div>
           </div>
         </button>
-        <button className="quick-btn" onClick={onAddItem}>
-          <div className="icon-wrap icon-blue">
-            <Icon type="plus" size={22} />
-          </div>
-          <div>
-            <div className="qb-title">Tambah Item</div>
-            <div className="qb-sub">Daftarkan obat/bahan baru</div>
-          </div>
-        </button>
+        {onAddItem && (
+          <button className="quick-btn" onClick={onAddItem}>
+            <div className="icon-wrap icon-blue">
+              <Icon type="plus" size={22} />
+            </div>
+            <div>
+              <div className="qb-title">Tambah Item</div>
+              <div className="qb-sub">Daftarkan obat/bahan baru</div>
+            </div>
+          </button>
+        )}
         <button className="quick-btn" onClick={onExport}>
           <div className="icon-wrap icon-purple">
             <Icon type="download" size={22} />
@@ -139,7 +151,12 @@ export function DashboardPage({ items, transactions, onNewTx, onEditTx, onAddIte
             <div className="dot dot-accent" /> Transaksi Terakhir
           </div>
         </div>
-        <TxTable transactions={transactions.slice(0, 5)} onEdit={onEditTx} emptyText="Belum ada transaksi" />
+        <TxTable
+          transactions={transactions.slice(0, 5)}
+          canVoid={canVoid}
+          onVoid={onVoidTx}
+          emptyText="Belum ada transaksi"
+        />
       </div>
     </>
   );

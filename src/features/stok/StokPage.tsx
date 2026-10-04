@@ -7,13 +7,15 @@ type KritisFilter = "semua" | "kritis" | "non-kritis";
 
 interface StokPageProps {
   items: Item[];
+  /** Hanya admin yang bisa menambah, mengubah, menghapus, dan menandai kritis. */
+  isAdmin: boolean;
   onAddItem: () => void;
   onEditItem: (item: Item) => void;
   onDeleteItem: (item: Item) => void;
   onToggleKritis: (item: Item) => void;
 }
 
-export function StokPage({ items, onAddItem, onEditItem, onDeleteItem, onToggleKritis }: StokPageProps) {
+export function StokPage({ items, isAdmin, onAddItem, onEditItem, onDeleteItem, onToggleKritis }: StokPageProps) {
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("Semua");
   const [filterKritis, setFilterKritis] = useState<KritisFilter>("semua");
@@ -54,9 +56,11 @@ export function StokPage({ items, onAddItem, onEditItem, onDeleteItem, onToggleK
           <option value="kritis">⚠ Kritis Saja</option>
           <option value="non-kritis">Non-Kritis Saja</option>
         </select>
-        <button className="btn btn-primary" onClick={onAddItem}>
-          <Icon type="plus" size={16} /> Tambah Item
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={onAddItem}>
+            <Icon type="plus" size={16} /> Tambah Item
+          </button>
+        )}
       </div>
       <div className="panel">
         <div className="table-scroll">
@@ -68,13 +72,13 @@ export function StokPage({ items, onAddItem, onEditItem, onDeleteItem, onToggleK
                 <th>Status</th>
                 <th>Stok</th>
                 <th>Min. Stok</th>
-                <th>Aksi</th>
+                {isAdmin && <th>Aksi</th>}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="table-empty">
+                  <td colSpan={isAdmin ? 6 : 5} className="table-empty">
                     Tidak ada data
                   </td>
                 </tr>
@@ -86,13 +90,19 @@ export function StokPage({ items, onAddItem, onEditItem, onDeleteItem, onToggleK
                       <span className="tag tag-cat">{item.category}</span>
                     </td>
                     <td>
-                      <button
-                        className={`kritis-badge${item.kritis ? " active" : ""}`}
-                        onClick={() => onToggleKritis(item)}
-                        title="Klik untuk mengubah status kritis"
-                      >
-                        {item.kritis ? "⚠ KRITIS" : "—"}
-                      </button>
+                      {isAdmin ? (
+                        <button
+                          className={`kritis-badge${item.kritis ? " active" : ""}`}
+                          onClick={() => onToggleKritis(item)}
+                          title="Klik untuk mengubah status kritis"
+                        >
+                          {item.kritis ? "⚠ KRITIS" : "—"}
+                        </button>
+                      ) : (
+                        <span className={`kritis-badge readonly${item.kritis ? " active" : ""}`}>
+                          {item.kritis ? "⚠ KRITIS" : "—"}
+                        </span>
+                      )}
                     </td>
                     <td>
                       {isLowStock(item) ? (
@@ -104,24 +114,26 @@ export function StokPage({ items, onAddItem, onEditItem, onDeleteItem, onToggleK
                       )}
                     </td>
                     <td className="mono muted">{item.minStock}</td>
-                    <td>
-                      <div className="actions">
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => onEditItem(item)}
-                          aria-label={`Edit ${item.name}`}
-                        >
-                          <Icon type="edit" size={14} />
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => onDeleteItem(item)}
-                          aria-label={`Hapus ${item.name}`}
-                        >
-                          <Icon type="trash" size={14} />
-                        </button>
-                      </div>
-                    </td>
+                    {isAdmin && (
+                      <td>
+                        <div className="actions">
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => onEditItem(item)}
+                            aria-label={`Edit ${item.name}`}
+                          >
+                            <Icon type="edit" size={14} />
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => onDeleteItem(item)}
+                            aria-label={`Hapus ${item.name}`}
+                          >
+                            <Icon type="trash" size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
