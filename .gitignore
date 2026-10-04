@@ -7,4 +7,3 @@ coverage
 .vscode/*
 !.vscode/extensions.json
 backups
-dev-preview

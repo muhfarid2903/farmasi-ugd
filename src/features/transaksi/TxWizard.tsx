@@ -86,6 +86,12 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
     setStep("qty");
   }
 
+  /** Ubah jumlah; pesan kesalahan lama dihapus karena jumlahnya sudah diperbaiki. */
+  function changeQty(value: string) {
+    setQty(value);
+    setError("");
+  }
+
   function toQtyReview() {
     if (!item) return setStep("item");
     if (!qtyValid) return setError("Jumlah harus angka bulat, paling sedikit 1.");
@@ -258,7 +264,7 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
                 className="qty-btn"
                 aria-label="Kurangi satu"
                 disabled={!qtyValid || qtyNum <= 1}
-                onClick={() => setQty(String(Math.max(1, qtyNum - 1)))}
+                onClick={() => changeQty(String(Math.max(1, qtyNum - 1)))}
               >
                 −
               </button>
@@ -270,13 +276,13 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
                 step={1}
                 aria-label="Jumlah"
                 value={qty}
-                onChange={(e) => setQty(e.target.value)}
+                onChange={(e) => changeQty(e.target.value)}
                 onFocus={(e) => e.target.select()}
               />
               <button
                 className="qty-btn"
                 aria-label="Tambah satu"
-                onClick={() => setQty(String(qtyValid ? qtyNum + 1 : 1))}
+                onClick={() => changeQty(String(qtyValid ? qtyNum + 1 : 1))}
               >
                 +
               </button>
