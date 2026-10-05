@@ -11,6 +11,7 @@ interface PengaturanPageProps {
   onExport: () => void;
   onOpname: () => void;
   onDarurat: () => void;
+  onKosongkan: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
@@ -23,6 +24,7 @@ export function PengaturanPage({
   onExport,
   onOpname,
   onDarurat,
+  onKosongkan,
   notify,
 }: PengaturanPageProps) {
   return (
@@ -85,6 +87,19 @@ export function PengaturanPage({
               <Icon type="download" size={18} /> Unduh Laporan
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="settings-card settings-card-danger">
+        <Icon type="trash" size={28} />
+        <div className="settings-card-title">Kosongkan Semua Stok</div>
+        <p className="settings-card-text">
+          Jadikan semua stok 0 sebagai awal hitungan baru. Tercatat sebagai stok opname; riwayat lama tetap tersimpan.
+        </p>
+        <div className="settings-card-actions">
+          <button className="btn btn-danger" onClick={onKosongkan}>
+            Kosongkan Semua Stok
+          </button>
         </div>
       </div>
 

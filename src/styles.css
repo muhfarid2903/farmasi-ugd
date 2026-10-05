@@ -1675,3 +1675,32 @@ select:focus {
 .darurat-section-body .review-line span:first-child {
   color: var(--text);
 }
+
+/* ── Kosongkan semua stok ──────────────────────────────────────── */
+.settings-card-danger {
+  border: 2px solid var(--red);
+  color: var(--red);
+  margin-top: 1rem;
+}
+.kosongkan-steps {
+  margin: 1.25rem 0 0;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.kosongkan-steps li::marker {
+  font-weight: 700;
+}
+.kosongkan-input {
+  max-width: 18rem;
+  margin-top: 0.4rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.kosongkan-next {
+  margin-top: 1rem;
+}
+.kosongkan-steps label {
+  display: block;
+}

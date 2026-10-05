@@ -204,7 +204,12 @@ export async function saveOpname(entries: OpnameEntry[], items: Item[], by: Acto
     ops.push((b) => {
       const txRef = doc(txCol);
       b.set(txRef, { ...data, opnameId: opnameRef.id, createdAt: nowISO() });
-      b.update(doc(itemsCol, item.id), { stock: increment(stockDelta(data.type, data.qty)), lastTxId: txRef.id });
+      b.update(doc(itemsCol, item.id), {
+        stock: increment(stockDelta(data.type, data.qty)),
+        lastTxId: txRef.id,
+        // Stok fisik 0: ED tidak berlaku lagi
+        ...(e.counted === 0 && item.expiry ? { expiry: deleteField() } : {}),
+      });
     });
   }
   const commits: Promise<void>[] = [];

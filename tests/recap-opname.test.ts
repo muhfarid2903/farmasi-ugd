@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diffText, opnameEntries, parseCount } from "../src/lib/opname";
+import { diffText, emptyAllEntries, opnameEntries, parseCount } from "../src/lib/opname";
 import { activeRows, monthlyRecap } from "../src/lib/recap";
 import type { Item, Transaction } from "../src/types";
 
@@ -102,5 +102,15 @@ describe("opname", () => {
     expect(parseCount("")).toBeNull();
     expect(parseCount("-1")).toBeNull();
     expect(parseCount("1.5")).toBeNull();
+  });
+});
+
+describe("emptyAllEntries", () => {
+  it("hanya barang yang stoknya tidak nol, semuanya dihitung 0", () => {
+    const e = emptyAllEntries([item("b", 3), item("a", 0), item("c", 7)]);
+    expect(e.map((x) => [x.itemId, x.system, x.counted])).toEqual([
+      ["b", 3, 0],
+      ["c", 7, 0],
+    ]);
   });
 });

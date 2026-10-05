@@ -7,6 +7,7 @@ import { Toast, type ToastMessage } from "./components/Toast";
 import { BerandaPage } from "./features/beranda/BerandaPage";
 import { DaruratPage } from "./features/darurat/DaruratPage";
 import { ExportModal } from "./features/laporan/ExportModal";
+import { KosongkanPage } from "./features/opname/KosongkanPage";
 import { OpnamePage } from "./features/opname/OpnamePage";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
 import { TourModal } from "./features/bantuan/TourModal";
@@ -154,6 +155,13 @@ export default function App({ profile }: { profile: UserProfile }) {
     );
   }
 
+  function handleEmptyAll(entries: OpnameEntry[]) {
+    write(
+      repo.saveOpname(entries, items, profile, "Pengosongan semua stok (awal hitungan baru)"),
+      `Stok ${entries.length} barang dikosongkan`,
+    );
+  }
+
   function handleApplyDarurat(kritis: { id: string; kritis: boolean }[], units: { id: string; unit: string }[]) {
     write(
       repo.applyDaruratChanges(kritis, units),
@@ -276,7 +284,17 @@ export default function App({ profile }: { profile: UserProfile }) {
               onExport={openExport}
               onOpname={() => setPage("opname")}
               onDarurat={() => setPage("darurat")}
+              onKosongkan={() => setPage("kosongkan")}
               notify={notify}
+            />
+          )}
+          {page === "kosongkan" && isAdmin && (
+            <KosongkanPage
+              items={items}
+              onConfirm={handleEmptyAll}
+              onBackup={() => setPage("pengaturan")}
+              onOpname={() => setPage("opname")}
+              onBack={() => setPage("pengaturan")}
             />
           )}
           {page === "darurat" && isAdmin && (

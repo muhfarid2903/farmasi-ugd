@@ -31,3 +31,11 @@ export function parseCount(value: string): number | null {
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
+
+/** Baris opname untuk mengosongkan semua stok: setiap barang yang stoknya tidak nol dihitung 0. */
+export function emptyAllEntries(items: Item[]): OpnameEntry[] {
+  return items
+    .filter((i) => i.stock !== 0)
+    .map((i) => ({ itemId: i.id, itemName: i.name, unit: i.unit, system: i.stock, counted: 0 }))
+    .sort((a, b) => a.itemName.localeCompare(b.itemName));
+}
