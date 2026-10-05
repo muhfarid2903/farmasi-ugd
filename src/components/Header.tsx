@@ -3,9 +3,7 @@ import type { ReactNode } from "react";
 export function Header({ right }: { right?: ReactNode }) {
   return (
     <div className="header">
-      <div className="header-logo" aria-hidden="true">
-        +
-      </div>
+      <img className="header-logo" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="40" height="40" />
       <div>
         <div className="header-title">e-Stok UGD</div>
         <div className="header-sub">Puskesmas Liukang Tupabbiring</div>

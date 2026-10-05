@@ -20,9 +20,11 @@
   --text: #111827;
   --text2: #3f4a5a;
   --text3: #5f6b7a;
-  --primary: #0b7a6e;
-  --primary-hover: #08665c;
-  --primary-bg: #e3f3f0;
+  /* Merah = warna logo (merek). Tombol utama biru tua supaya tidak tertukar dengan merah peringatan/habis. */
+  --brand: #c62828;
+  --primary: #1e3a5f;
+  --primary-hover: #152b47;
+  --primary-bg: #e6edf6;
   --green: #15803d;
   --green-bg: #e7f5ec;
   --orange: #b45309;
@@ -80,6 +82,7 @@ strong {
 /* ── Kepala halaman ─────────────────────────────────────────────── */
 .header {
   background: var(--surface);
+  border-top: 4px solid var(--brand);
   border-bottom: 1px solid var(--border);
   padding: 0.6rem 1.25rem;
   display: flex;
@@ -92,14 +95,7 @@ strong {
 .header-logo {
   width: 2.4rem;
   height: 2.4rem;
-  background: var(--primary);
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.4rem;
-  color: #fff;
   flex-shrink: 0;
 }
 .header-title {
