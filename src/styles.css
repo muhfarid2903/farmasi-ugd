@@ -1543,3 +1543,77 @@ select:focus {
 .alert-panel .alert-row-count.text-red {
   color: var(--red);
 }
+
+/* ── Tahap 4: stok opname ──────────────────────────────────────── */
+.tag-adjust {
+  background: var(--blue-bg);
+  color: var(--blue);
+  margin: 0.35rem 0 0;
+}
+.opname-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+.opname-row.ok {
+  border-left-color: var(--green);
+}
+.opname-row.diff {
+  border-left-color: var(--orange);
+}
+.opname-input {
+  width: 7.5rem;
+  flex-shrink: 0;
+}
+.opname-input .form-input {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+.opname-diff {
+  color: var(--orange);
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+.opname-diff.pas {
+  color: var(--green);
+}
+.opname-bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1rem;
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow);
+  z-index: 5;
+}
+.opname-bar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.opname-review {
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0.5rem 0 0.75rem;
+}
+.opname-card {
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .opname-bar {
+    bottom: 4.5rem;
+  }
+}

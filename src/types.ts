@@ -60,6 +60,32 @@ export interface Transaction {
   voidsTxId?: string;
   /** Diisi pada transaksi yang sudah dibatalkan: id transaksi pembatalannya. */
   voidedBy?: string;
+  /** Penyesuaian stok (bukan barang masuk/keluar sungguhan): hasil stok opname atau koreksi admin. */
+  adjust?: "opname" | "koreksi";
+  /** Untuk penyesuaian opname: id dokumen opname-nya. */
+  opnameId?: string;
+}
+
+/** Satu baris hasil hitung fisik dalam stok opname. */
+export interface OpnameEntry {
+  itemId: string;
+  itemName: string;
+  unit: string;
+  /** Stok di aplikasi saat disimpan. */
+  system: number;
+  /** Hasil hitung fisik. */
+  counted: number;
+}
+
+/** Dokumen di koleksi `opname`. */
+export interface Opname {
+  id: string;
+  date: string;
+  operator: string;
+  email: string;
+  note: string;
+  entries: OpnameEntry[];
+  createdAt: string;
 }
 
 export type Role = "admin" | "petugas";
@@ -73,7 +99,7 @@ export interface UserProfile {
   createdAt?: string;
 }
 
-export type Page = "beranda" | "stok" | "riwayat" | "bantuan" | "pengaturan";
+export type Page = "beranda" | "stok" | "riwayat" | "bantuan" | "pengaturan" | "opname";
 
 /** online = tersambung; pending = ada perubahan lokal belum terkirim; offline = memakai cache lokal. */
 export type SyncStatus = "loading" | "online" | "pending" | "offline";

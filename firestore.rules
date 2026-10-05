@@ -69,12 +69,25 @@ service cloud.firestore {
       );
     }
 
+    // Riwayat stok opname: dibuat admin, tidak bisa diubah atau dihapus
+    match /opname/{opnameId} {
+      allow read: if isStaff();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['date', 'operator', 'email', 'note', 'entries', 'createdAt'])
+        && request.resource.data.keys().hasAll(['date', 'operator', 'email', 'note', 'entries', 'createdAt'])
+        && request.resource.data.email == email()
+        && request.resource.data.entries is list
+        && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+      allow update, delete: if false;
+    }
+
     match /transactions/{txId} {
       allow read: if isStaff();
 
       allow create: if isStaff()
         && request.resource.data.keys().hasOnly(
-             ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt', 'voidsTxId', 'expiry'])
+             ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt', 'voidsTxId', 'expiry',
+              'adjust', 'opnameId'])
         && request.resource.data.keys().hasAll(
              ['itemId', 'itemName', 'type', 'qty', 'date', 'note', 'operator', 'email', 'createdAt'])
         && request.resource.data.type in ['masuk', 'keluar']
@@ -86,6 +99,12 @@ service cloud.firestore {
         && request.resource.data.createdAt is string
         && request.resource.data.email == email()
         && validExpiry(request.resource.data)
+        // Penyesuaian stok (opname/koreksi) hanya oleh admin; penyesuaian opname harus punya dokumen opname-nya
+        && (!('adjust' in request.resource.data) || (
+             isAdmin() && request.resource.data.adjust in ['opname', 'koreksi']
+             && (request.resource.data.adjust != 'opname'
+                 || existsAfter(/databases/$(database)/documents/opname/$(request.resource.data.get('opnameId', 'x'))))))
+        && (!('opnameId' in request.resource.data) || request.resource.data.get('adjust', '') == 'opname')
         // Stok item harus ikut diperbarui dalam batch yang sama
         && getAfter(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data.lastTxId == txId
         // Transaksi pembatalan harus menandai transaksi aslinya dalam batch yang sama

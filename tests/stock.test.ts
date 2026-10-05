@@ -102,6 +102,9 @@ describe("pembatalan transaksi", () => {
     expect(canVoid(old, admin)).toBe(true);
     expect(canVoid(old, ani)).toBe(false);
   });
+  it("penyesuaian opname/koreksi tidak bisa dibatalkan", () => {
+    expect(canVoid({ ...tx, adjust: "opname" }, admin)).toBe(false);
+  });
   it("transaksi yang sudah dibatalkan atau transaksi pembatalan tidak bisa dibatalkan lagi", () => {
     expect(canVoid({ ...tx, voidedBy: "t2" }, admin)).toBe(false);
     expect(canVoid({ ...tx, voidsTxId: "t0" }, admin)).toBe(false);

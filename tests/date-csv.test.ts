@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRecapCSV, csvCell } from "../src/lib/csv";
+import { buildItemRecapCSV, buildRecapCSV, csvCell } from "../src/lib/csv";
 import { formatDate, monthLabel, todayStr } from "../src/lib/date";
 import type { Transaction } from "../src/types";
 
@@ -55,5 +55,30 @@ describe("buildRecapCSV", () => {
     expect(lines[2]).toBe("Total Transaksi: 2 (Masuk: 1 | Keluar: 1)");
     expect(lines[6]).toBe('1,2026-10-02,"NaCl 0,9%",Keluar,2,,Ani,');
     expect(lines[7]).toBe('2,2026-10-03,"NaCl 0,9%",Masuk,2,,Ani,Dibatalkan');
+  });
+});
+
+describe("buildItemRecapCSV", () => {
+  it("satu baris per barang dengan kolom rekap", () => {
+    const csv = buildItemRecapCSV(
+      [
+        {
+          itemId: "a",
+          itemName: "NaCl 0,9%",
+          category: "Cairan Infus",
+          unit: "botol",
+          start: 5,
+          masuk: 10,
+          keluar: 3,
+          adjust: -1,
+          end: 11,
+        },
+      ],
+      "Oktober 2026",
+      new Date(2026, 9, 31),
+    );
+    const lines = csv.trim().split("\n");
+    expect(lines[4]).toBe("No,Nama Barang,Jenis,Satuan,Stok Awal,Masuk,Keluar,Penyesuaian,Stok Akhir");
+    expect(lines[5]).toBe('1,"NaCl 0,9%",Cairan Infus,botol,5,10,3,-1,11');
   });
 });

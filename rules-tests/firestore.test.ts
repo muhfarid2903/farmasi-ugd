@@ -206,6 +206,50 @@ describe("tanggal kedaluwarsa (ED)", () => {
   });
 });
 
+describe("stok opname & koreksi", () => {
+  const opnameDoc = (email: string) => ({
+    date: "2026-10-05",
+    operator: "Admin",
+    email,
+    note: "",
+    entries: [{ itemId: "epi", itemName: "Epinefrin", unit: "ampul", system: 10, counted: 8 }],
+    createdAt: "2026-10-05T01:00:00Z",
+  });
+  function opnameBatch(db: Firestore, email: string, withDoc = true) {
+    const b = writeBatch(db);
+    if (withDoc) b.set(doc(db, "opname", "o1"), opnameDoc(email));
+    b.set(doc(db, "transactions", "a1"), txBase(email, { qty: 2, adjust: "opname", opnameId: "o1" }));
+    b.update(doc(db, "items", "epi"), { stock: increment(-2), lastTxId: "a1" });
+    return b.commit();
+  }
+
+  it("admin boleh menyimpan opname beserta penyesuaian stoknya", async () => {
+    await assertSucceeds(opnameBatch(as(ADMIN), ADMIN));
+  });
+  it("petugas tidak boleh membuat opname atau penyesuaian", async () => {
+    await assertFails(opnameBatch(as(ANI), ANI));
+    await assertFails(txBatch(as(ANI), "k1", txBase(ANI, { qty: 1, adjust: "koreksi" }), -1));
+  });
+  it("penyesuaian opname tanpa dokumen opname ditolak", async () => {
+    await assertFails(opnameBatch(as(ADMIN), ADMIN, false));
+  });
+  it("admin boleh mencatat koreksi stok", async () => {
+    await assertSucceeds(txBatch(as(ADMIN), "k1", txBase(ADMIN, { type: "masuk", qty: 3, adjust: "koreksi" }), 3));
+  });
+  it("jenis penyesuaian tak dikenal ditolak", async () => {
+    await assertFails(txBatch(as(ADMIN), "k1", txBase(ADMIN, { qty: 1, adjust: "hilang" }), -1));
+  });
+  it("opname tidak bisa diubah atau dihapus", async () => {
+    await assertSucceeds(opnameBatch(as(ADMIN), ADMIN));
+    await assertFails(updateDoc(doc(as(ADMIN), "opname", "o1"), { note: "ubah" }));
+    await assertFails(deleteDoc(doc(as(ADMIN), "opname", "o1")));
+  });
+  it("petugas boleh membaca riwayat opname", async () => {
+    await assertSucceeds(opnameBatch(as(ADMIN), ADMIN));
+    await assertSucceeds(getDoc(doc(as(ANI), "opname", "o1")));
+  });
+});
+
 describe("kelola item", () => {
   it("petugas tidak boleh menambah, mengubah, atau menghapus item", async () => {
     await assertFails(setDoc(doc(as(ANI), "items", "baru"), { name: "X", stock: 1 }));

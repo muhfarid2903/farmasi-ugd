@@ -6,6 +6,7 @@ import { SyncBadge } from "./components/SyncBadge";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { BerandaPage } from "./features/beranda/BerandaPage";
 import { ExportModal } from "./features/laporan/ExportModal";
+import { OpnamePage } from "./features/opname/OpnamePage";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
 import { TourModal } from "./features/bantuan/TourModal";
 import { PengaturanPage } from "./features/pengaturan/PengaturanPage";
@@ -23,7 +24,7 @@ import { nowISO, todayStr } from "./lib/date";
 import { expiryPatch, formatExpiry } from "./lib/expiry";
 import * as repo from "./lib/repository";
 import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type StockFilter } from "./lib/stock";
-import type { Item, Page, Transaction, TxType, UserProfile } from "./types";
+import type { Item, OpnameEntry, Page, Transaction, TxType, UserProfile } from "./types";
 
 type ModalState =
   | { kind: "tx"; type: TxType }
@@ -111,9 +112,11 @@ export default function App({ profile }: { profile: UserProfile }) {
 
   function handleSaveItem(data: repo.ItemData, editItem?: Item) {
     if (editItem) {
-      // Stok hanya ditulis jika diubah, agar tidak menimpa transaksi dari perangkat lain
+      // Perubahan stok dicatat sebagai transaksi koreksi (ada jejaknya), bukan ditimpa langsung
       const { stock, ...rest } = data;
-      write(repo.updateItem(editItem.id, stock === editItem.stock ? rest : data), "Data barang disimpan");
+      write(repo.updateItem(editItem.id, rest), "Data barang disimpan");
+      const correction = repo.correctStock(editItem, stock, profile);
+      if (correction) reportFailure(correction);
     } else {
       write(repo.addItem(data), "Barang baru ditambahkan");
     }
@@ -136,6 +139,14 @@ export default function App({ profile }: { profile: UserProfile }) {
   function showStock(filter: StockFilter = "semua") {
     setStokFilter(filter);
     setPage("stok");
+  }
+
+  function handleSaveOpname(entries: OpnameEntry[], note: string) {
+    const changed = entries.filter((e) => e.counted !== items.find((i) => i.id === e.itemId)?.stock).length;
+    write(
+      repo.saveOpname(entries, items, profile, note),
+      `Stok opname tersimpan: ${entries.length} barang, ${changed} disesuaikan`,
+    );
   }
 
   function closeTour() {
@@ -246,7 +257,11 @@ export default function App({ profile }: { profile: UserProfile }) {
               onAddItem={openAddItem}
               onShowStock={() => showStock()}
               onExport={openExport}
+              onOpname={() => setPage("opname")}
             />
+          )}
+          {page === "opname" && isAdmin && (
+            <OpnamePage items={items} onSave={handleSaveOpname} onBack={() => setPage("pengaturan")} />
           )}
         </main>
       </div>
@@ -296,7 +311,9 @@ export default function App({ profile }: { profile: UserProfile }) {
       {modal?.kind === "expiry" && (
         <ExpiryModal item={modal.item} onSave={(expiry) => handleSetExpiry(modal.item, expiry)} onClose={closeModal} />
       )}
-      {modal?.kind === "export" && <ExportModal transactions={transactions} onClose={closeModal} notify={notify} />}
+      {modal?.kind === "export" && (
+        <ExportModal items={items} transactions={transactions} onClose={closeModal} notify={notify} />
+      )}
       {(modal?.kind === "tour" || (firstVisit && modal === null)) && <TourModal onClose={closeTour} />}
       {modal?.kind === "font" && <FontSizeModal scale={fontScale} onChange={setFontScale} onClose={closeModal} />}
 

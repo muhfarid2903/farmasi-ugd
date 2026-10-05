@@ -1,18 +1,22 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
-import { buildRecapCSV, downloadText } from "../../lib/csv";
+import { buildItemRecapCSV, buildRecapCSV, downloadText } from "../../lib/csv";
 import { monthLabel, todayStr } from "../../lib/date";
+import { activeRows, monthlyRecap } from "../../lib/recap";
 import { filterByPeriod } from "../../lib/stock";
-import type { Transaction } from "../../types";
+import type { Item, Transaction } from "../../types";
 
 interface ExportModalProps {
+  items: Item[];
   transactions: Transaction[];
   onClose: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
-export function ExportModal({ transactions, onClose, notify }: ExportModalProps) {
+export function ExportModal({ items, transactions, onClose, notify }: ExportModalProps) {
+  /** catatan = daftar transaksi; rekap = per barang (stok awal, masuk, keluar, akhir) per bulan. */
+  const [kind, setKind] = useState<"catatan" | "rekap">("catatan");
   const [mode, setMode] = useState<"bulan" | "rentang">("bulan");
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [from, setFrom] = useState(todayStr());
@@ -25,8 +29,24 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
     [transactions, mode, month, from, to],
   );
   const masukCount = filtered.filter((t) => t.type === "masuk").length;
+  const recapRows = useMemo(
+    () => (kind === "rekap" ? activeRows(monthlyRecap(items, transactions, month)) : []),
+    [kind, items, transactions, month],
+  );
 
   function handleDownload() {
+    if (kind === "rekap") {
+      const name = `rekap_stok_per_barang_${monthLabel(month).replace(" ", "_")}.csv`;
+      const content = buildItemRecapCSV(recapRows, monthLabel(month));
+      setCsv(content);
+      setFilename(name);
+      try {
+        downloadText(content, name);
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
     if (filtered.length === 0) return notify("Tidak ada catatan pada waktu yang dipilih.", "error");
     const label = mode === "bulan" ? monthLabel(month) : `${from} s/d ${to}`;
     const name =
@@ -55,23 +75,47 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
       {!csv ? (
         <>
           <div className="form-group">
-            <label className="form-label">Laporan untuk</label>
+            <label className="form-label">Jenis laporan</label>
             <div className="btn-group">
               <button
-                className={`btn ${mode === "bulan" ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setMode("bulan")}
+                className={`btn ${kind === "catatan" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setKind("catatan")}
               >
-                Satu bulan
+                Daftar catatan
               </button>
               <button
-                className={`btn ${mode === "rentang" ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setMode("rentang")}
+                className={`btn ${kind === "rekap" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setKind("rekap")}
               >
-                Pilih tanggal
+                Rekap per barang
               </button>
             </div>
+            <p className="form-hint">
+              {kind === "catatan"
+                ? "Semua catatan barang masuk dan keluar satu per satu."
+                : "Satu baris per barang: stok awal, masuk, keluar, penyesuaian, dan stok akhir bulan."}
+            </p>
           </div>
-          {mode === "bulan" ? (
+          {kind === "catatan" && (
+            <div className="form-group">
+              <label className="form-label">Laporan untuk</label>
+              <div className="btn-group">
+                <button
+                  className={`btn ${mode === "bulan" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setMode("bulan")}
+                >
+                  Satu bulan
+                </button>
+                <button
+                  className={`btn ${mode === "rentang" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setMode("rentang")}
+                >
+                  Pilih tanggal
+                </button>
+              </div>
+            </div>
+          )}
+          {mode === "bulan" || kind === "rekap" ? (
             <div className="form-group">
               <label className="form-label" htmlFor="exp-month">
                 Bulan
@@ -115,7 +159,12 @@ export function ExportModal({ transactions, onClose, notify }: ExportModalProps)
           <div className="export-preview">
             <div className="export-preview-label">Isi laporan:</div>
             <div className="export-preview-count">
-              {filtered.length === 0 ? (
+              {kind === "rekap" ? (
+                <>
+                  <span className="export-preview-number">{recapRows.length}</span> barang (yang punya stok atau
+                  pergerakan bulan ini)
+                </>
+              ) : filtered.length === 0 ? (
                 <span className="text-faint">Tidak ada catatan pada waktu ini</span>
               ) : (
                 <>

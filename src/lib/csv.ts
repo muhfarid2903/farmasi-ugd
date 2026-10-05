@@ -1,4 +1,5 @@
 import type { Transaction } from "../types";
+import type { RecapRow } from "./recap";
 
 /** Escape satu sel CSV: bungkus dengan kutip ganda dan gandakan kutip di dalamnya. */
 export function csvCell(value: string | number): string {
@@ -26,7 +27,15 @@ export function buildRecapCSV(txs: Transaction[], periodLabel: string, exportedA
         t.qty,
         t.note ?? "",
         t.operator,
-        t.voidedBy ? "Dibatalkan" : t.voidsTxId ? "Pembatalan" : "",
+        t.voidedBy
+          ? "Dibatalkan"
+          : t.voidsTxId
+            ? "Pembatalan"
+            : t.adjust === "opname"
+              ? "Penyesuaian opname"
+              : t.adjust === "koreksi"
+                ? "Koreksi stok"
+                : "",
       ]
         .map(csvCell)
         .join(","),
@@ -46,4 +55,19 @@ export function downloadText(content: string, filename: string): void {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/** Rekap per barang untuk satu bulan: stok awal, masuk, keluar, penyesuaian, stok akhir. */
+export function buildItemRecapCSV(rows: RecapRow[], periodLabel: string, exportedAt: Date = new Date()): string {
+  const lines = [
+    "REKAP STOK PER BARANG — UGD PUSKESMAS L. TUPABBIRING",
+    csvCell(`Periode: ${periodLabel}`),
+    csvCell(`Diekspor: ${exportedAt.toLocaleString("id-ID")}`),
+    "",
+    "No,Nama Barang,Jenis,Satuan,Stok Awal,Masuk,Keluar,Penyesuaian,Stok Akhir",
+    ...rows.map((r, i) =>
+      [i + 1, r.itemName, r.category, r.unit, r.start, r.masuk, r.keluar, r.adjust, r.end].map(csvCell).join(","),
+    ),
+  ];
+  return lines.join("\n") + "\n";
 }

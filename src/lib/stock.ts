@@ -28,7 +28,8 @@ export type TxData = Omit<Transaction, "id" | "createdAt" | "voidedBy">;
 
 /** Apakah transaksi ini masih bisa dibatalkan oleh pengguna tersebut. */
 export function canVoid(tx: Transaction, user: { email: string; role: string }): boolean {
-  if (tx.voidedBy || tx.voidsTxId) return false;
+  // Penyesuaian (opname/koreksi) dibetulkan dengan opname/koreksi baru, bukan dibatalkan
+  if (tx.voidedBy || tx.voidsTxId || tx.adjust) return false;
   return user.role === "admin" || tx.email === user.email;
 }
 

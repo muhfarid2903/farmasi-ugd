@@ -8,10 +8,18 @@ interface PengaturanPageProps {
   onAddItem: () => void;
   onShowStock: () => void;
   onExport: () => void;
+  onOpname: () => void;
 }
 
 /** Semua fungsi khusus admin dikumpulkan di sini supaya tampilan petugas tetap sederhana. */
-export function PengaturanPage({ currentEmail, onSaveUser, onAddItem, onShowStock, onExport }: PengaturanPageProps) {
+export function PengaturanPage({
+  currentEmail,
+  onSaveUser,
+  onAddItem,
+  onShowStock,
+  onExport,
+  onOpname,
+}: PengaturanPageProps) {
   return (
     <>
       <h1 className="page-title">Pengaturan</h1>
@@ -35,9 +43,25 @@ export function PengaturanPage({ currentEmail, onSaveUser, onAddItem, onShowStoc
           </div>
         </div>
         <div className="settings-card">
+          <Icon type="check" size={28} />
+          <div className="settings-card-title">Stok Opname</div>
+          <p className="settings-card-text">
+            Hitung barang di rak dan samakan dengan aplikasi. Selisihnya tercatat sebagai penyesuaian, dan riwayatnya
+            tersimpan.
+          </p>
+          <div className="settings-card-actions">
+            <button className="btn btn-primary" onClick={onOpname}>
+              Mulai Stok Opname
+            </button>
+          </div>
+        </div>
+        <div className="settings-card">
           <Icon type="download" size={28} />
           <div className="settings-card-title">Laporan</div>
-          <p className="settings-card-text">Unduh catatan barang masuk dan keluar per bulan atau per tanggal.</p>
+          <p className="settings-card-text">
+            Unduh daftar catatan barang masuk/keluar, atau rekap per barang (stok awal, masuk, keluar, stok akhir) per
+            bulan.
+          </p>
           <div className="settings-card-actions">
             <button className="btn btn-primary" onClick={onExport}>
               <Icon type="download" size={18} /> Unduh Laporan

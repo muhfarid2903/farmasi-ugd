@@ -150,6 +150,7 @@ export function ItemFormModal({ editItem, onSubmit, onDelete, onClose }: ItemFor
                 value={form.stock}
                 onChange={(e) => set("stock", e.target.value)}
               />
+              {editItem && <p className="form-hint">Perubahan angka ini dicatat sebagai koreksi stok di Riwayat.</p>}
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="item-min">

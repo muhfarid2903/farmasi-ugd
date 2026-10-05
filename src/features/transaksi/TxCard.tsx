@@ -24,7 +24,14 @@ export function TxCard({ tx, unit = "", onVoid }: TxCardProps) {
       </span>
       <div className="tx-card-body">
         <div className="tx-card-text">
-          <b>{tx.operator}</b> {tx.type === "masuk" ? "menerima" : "mengeluarkan"}{" "}
+          <b>{tx.operator}</b>{" "}
+          {tx.adjust
+            ? tx.type === "masuk"
+              ? "menambah stok"
+              : "mengurangi stok"
+            : tx.type === "masuk"
+              ? "menerima"
+              : "mengeluarkan"}{" "}
           <b>
             {tx.qty} {unit}
           </b>{" "}
@@ -37,6 +44,11 @@ export function TxCard({ tx, unit = "", onVoid }: TxCardProps) {
         </div>
         {(voided || tx.voidsTxId) && (
           <span className="tag tag-void">{voided ? "Sudah dibatalkan" : "Pembatalan catatan sebelumnya"}</span>
+        )}
+        {tx.adjust && (
+          <span className="tag tag-adjust">
+            {tx.adjust === "opname" ? "Penyesuaian stok opname" : "Koreksi stok oleh admin"}
+          </span>
         )}
       </div>
       {onVoid && (
