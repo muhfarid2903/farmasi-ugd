@@ -30,6 +30,33 @@ export function BantuanPage({ onShowTour }: BantuanPageProps) {
       </div>
 
       <div className="guide-grid">
+        <Guide title="Memasang aplikasi di HP">
+          <p className="guide-sub">
+            Alamat aplikasi: <b>muhfarid2903.github.io/farmasi-ugd</b>
+          </p>
+          <p className="guide-sub">
+            <b>HP Android (Chrome):</b>
+          </p>
+          <ol className="guide-steps">
+            <li>Buka alamat di atas dengan Chrome.</li>
+            <li>
+              Tekan <b>Masuk dengan Google</b>, pilih akun Gmail Anda.
+            </li>
+            <li>
+              Tekan titik tiga <b>⋮</b> di kanan atas, lalu pilih <b>Instal aplikasi</b> (atau{" "}
+              <b>Tambahkan ke layar utama</b>).
+            </li>
+            <li>
+              Selanjutnya buka dari ikon <b>Farmasi UGD</b> di layar HP.
+            </li>
+          </ol>
+          <p className="guide-sub">
+            <b>iPhone (Safari):</b> tekan tombol <b>Bagikan</b> (kotak dengan panah ke atas), lalu pilih{" "}
+            <b>Tambahkan ke Layar Utama</b>.
+          </p>
+          <p className="guide-sub">Aplikasi diperbarui sendiri, tidak perlu dipasang ulang.</p>
+        </Guide>
+
         <Guide title="Mencatat barang keluar (dipakai pasien)">
           <ol className="guide-steps">
             <li>
