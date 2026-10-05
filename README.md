@@ -80,6 +80,21 @@ npm run add-user -- nama@gmail.com "Nama Admin" admin
 Di Firebase Console: **Authentication → Sign-in method → Google** harus aktif, dan domain
 `muhfarid2903.github.io` harus ada di **Authentication → Settings → Authorized domains**.
 
+## Cadangan data
+
+Admin mencadangkan data dari aplikasi: **Pengaturan → Cadangan Data → Unduh cadangan sekarang**.
+Hasilnya satu file JSON berisi seluruh barang, catatan transaksi, petugas, dan riwayat opname
+(lengkap dengan id dokumennya). Beranda admin menampilkan pengingat bila sudah 7 hari tidak mencadangkan.
+
+- Simpan file di tempat pribadi yang aman (Google Drive pribadi, flashdisk). File berisi email
+  petugas dan catatan pasien, jadi **jangan** disimpan di repo ini, karena repo ini publik.
+- Cadangan otomatis lewat GitHub Actions sengaja tidak dipakai karena alasan yang sama.
+- Memulihkan dari cadangan butuh akses tingkat pemilik project (Firebase Admin SDK), sebab aturan
+  keamanan melarang transaksi ditulis ulang dari aplikasi. Lakukan hanya bila benar-benar perlu.
+
+Skrip `npm run seed` dan `npm run add-user` hanya berfungsi untuk project Firebase baru yang aturan
+keamanannya belum diterbitkan.
+
 ## Deploy
 
 Setiap push ke `main` otomatis dicek (typecheck, lint, format, tes), di-build, lalu diterbitkan ke

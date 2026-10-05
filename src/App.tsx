@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FontSizeModal } from "./components/FontSizeModal";
 import { Header } from "./components/Header";
 import { Icon, type IconName } from "./components/Icon";
@@ -21,6 +21,7 @@ import { useFirstVisit } from "./hooks/useFirstVisit";
 import { useFontScale } from "./hooks/useFontScale";
 import { useInventory } from "./hooks/useInventory";
 import { nowISO, todayStr } from "./lib/date";
+import { backupDue, daysSince } from "./lib/backup";
 import { expiryPatch, formatExpiry } from "./lib/expiry";
 import * as repo from "./lib/repository";
 import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type StockFilter } from "./lib/stock";
@@ -53,6 +54,9 @@ export default function App({ profile }: { profile: UserProfile }) {
   const [fontScale, setFontScale] = useFontScale();
   const [firstVisit, markTourSeen] = useFirstVisit(`tour.${profile.email}`);
   const isAdmin = profile.role === "admin";
+  const [backupMeta, setBackupMeta] = useState<repo.BackupMeta | null | undefined>(undefined);
+  // Pengingat cadangan hanya untuk admin
+  useEffect(() => (isAdmin ? repo.subscribeBackupMeta(setBackupMeta) : undefined), [isAdmin]);
   const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
 
   const notify = useCallback((text: string, kind: ToastMessage["kind"]) => {
@@ -226,6 +230,11 @@ export default function App({ profile }: { profile: UserProfile }) {
               onShowHistory={() => setPage("riwayat")}
               onExport={openExport}
               onAddItem={isAdmin ? openAddItem : undefined}
+              backupReminder={
+                isAdmin && backupMeta !== undefined && backupDue(backupMeta?.lastBackupAt ?? null)
+                  ? { days: daysSince(backupMeta?.lastBackupAt ?? null), onGo: () => setPage("pengaturan") }
+                  : undefined
+              }
             />
           )}
           {page === "stok" && (
@@ -258,6 +267,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               onShowStock={() => showStock()}
               onExport={openExport}
               onOpname={() => setPage("opname")}
+              notify={notify}
             />
           )}
           {page === "opname" && isAdmin && (

@@ -17,7 +17,6 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
     "seed": "node scripts/seed.mjs",
     "icons": "pwa-assets-generator",
-    "backup": "node scripts/backup.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project farmasi-ugd-test \"vitest run --config vitest.rules.config.ts\"",
     "deploy:rules": "firebase deploy --only firestore:rules",
     "add-user": "node scripts/add-user.mjs"

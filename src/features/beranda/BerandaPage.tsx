@@ -20,6 +20,8 @@ interface BerandaPageProps {
   onExport: () => void;
   /** Kosong jika pengguna bukan admin. */
   onAddItem?: () => void;
+  /** Diisi untuk admin yang sudah lama tidak mencadangkan data. */
+  backupReminder?: { days: number | null; onGo: () => void };
 }
 
 export function BerandaPage({
@@ -31,6 +33,7 @@ export function BerandaPage({
   onShowHistory,
   onExport,
   onAddItem,
+  backupReminder,
 }: BerandaPageProps) {
   const { critical, regularCount } = useMemo(() => {
     const low = items.filter(isLowStock).sort((a, b) => a.stock - b.stock);
@@ -47,6 +50,20 @@ export function BerandaPage({
         {greeting()}, {userName}
       </div>
       <div className="home-date">{fullDate()}</div>
+
+      {backupReminder && (
+        <div className="backup-reminder">
+          <Icon type="alert" size={20} />
+          <span>
+            {backupReminder.days === null
+              ? "Data belum pernah dicadangkan."
+              : `Sudah ${backupReminder.days} hari data belum dicadangkan.`}
+          </span>
+          <button className="btn btn-ghost btn-sm" onClick={backupReminder.onGo}>
+            Cadangkan sekarang
+          </button>
+        </div>
+      )}
 
       <div className="big-actions">
         <button className="big-action masuk" onClick={() => onNewTx("masuk")}>
@@ -149,8 +166,8 @@ export function BerandaPage({
         </div>
       ) : (
         <div className="empty-note">
-          ED belum diisi untuk barang mana pun. Isi ED saat mencatat <b>Barang Masuk</b>, atau lewat tombol <b>ED</b> di
-          halaman Stok.
+          ED belum diisi untuk barang mana pun. Isi ED saat mencatat <b>Barang Masuk</b>, atau lewat tombol{" "}
+          <b>Ubah ED</b> di halaman Stok.
         </div>
       )}
 

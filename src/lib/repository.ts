@@ -4,6 +4,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDocsFromServer,
   increment,
   onSnapshot,
   orderBy,
@@ -225,4 +226,47 @@ export function subscribeOpnames(onData: (list: Opname[]) => void, onError: (e: 
     (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Opname)),
     onError,
   );
+}
+
+/**
+ * Ambil seluruh isi database langsung dari server untuk cadangan (butuh sinyal & akun admin).
+ * Tidak memakai cache supaya cadangan pasti lengkap dan terbaru.
+ */
+export async function fetchAllForBackup(): Promise<{
+  items: Item[];
+  transactions: Transaction[];
+  users: UserProfile[];
+  opname: Opname[];
+}> {
+  const [items, transactions, users, opname] = await Promise.all([
+    getDocsFromServer(itemsCol),
+    getDocsFromServer(txCol),
+    getDocsFromServer(usersCol),
+    getDocsFromServer(opnameCol),
+  ]);
+  return {
+    items: items.docs.map((d) => ({ id: d.id, ...d.data() }) as Item),
+    transactions: transactions.docs.map((d) => ({ id: d.id, ...d.data() }) as Transaction),
+    users: users.docs.map((d) => ({ email: d.id, ...d.data() }) as UserProfile),
+    opname: opname.docs.map((d) => ({ id: d.id, ...d.data() }) as Opname),
+  };
+}
+
+export interface BackupMeta {
+  lastBackupAt: string;
+  by: string;
+}
+
+const backupMetaRef = doc(db, "meta", "backup");
+
+export function subscribeBackupMeta(onData: (meta: BackupMeta | null) => void): Unsubscribe {
+  return onSnapshot(
+    backupMetaRef,
+    (snap) => onData(snap.exists() ? (snap.data() as BackupMeta) : null),
+    () => onData(null),
+  );
+}
+
+export function setBackupMeta(meta: BackupMeta): Promise<void> {
+  return setDoc(backupMetaRef, meta);
 }

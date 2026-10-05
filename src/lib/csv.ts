@@ -44,9 +44,10 @@ export function buildRecapCSV(txs: Transaction[], periodLabel: string, exportedA
   return lines.join("\n") + "\n";
 }
 
-/** Unduh teks sebagai file. BOM ditambahkan agar Excel membaca UTF-8 dengan benar. */
-export function downloadText(content: string, filename: string): void {
-  const blob = new Blob(["﻿" + content], { type: "text/csv;charset=utf-8;" });
+/** Unduh teks sebagai file. */
+export function downloadText(content: string, filename: string, type = "text/csv;charset=utf-8;"): void {
+  // BOM hanya untuk CSV, agar Excel membaca UTF-8 dengan benar
+  const blob = new Blob([type.startsWith("text/csv") ? "\uFEFF" + content : content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

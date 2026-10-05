@@ -1617,3 +1617,24 @@ select:focus {
     bottom: 4.5rem;
   }
 }
+
+/* ── Cadangan data ─────────────────────────────────────────────── */
+.settings-card-warn {
+  border: 2px solid var(--orange);
+}
+.backup-reminder {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-weight: 600;
+}
+.backup-reminder span {
+  flex: 1;
+  min-width: 12rem;
+}

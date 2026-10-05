@@ -69,6 +69,15 @@ service cloud.firestore {
       );
     }
 
+    // Keterangan cadangan terakhir (untuk pengingat): dibaca petugas, ditulis admin
+    match /meta/backup {
+      allow read: if isStaff();
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasOnly(['lastBackupAt', 'by'])
+        && request.resource.data.lastBackupAt is string
+        && request.resource.data.by == email();
+    }
+
     // Riwayat stok opname: dibuat admin, tidak bisa diubah atau dihapus
     match /opname/{opnameId} {
       allow read: if isStaff();

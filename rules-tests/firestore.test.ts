@@ -250,6 +250,22 @@ describe("stok opname & koreksi", () => {
   });
 });
 
+describe("keterangan cadangan", () => {
+  const meta = (by: string) => ({ lastBackupAt: "2026-10-05T01:00:00Z", by });
+  it("admin boleh mencatat waktu cadangan atas namanya sendiri", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "backup"), meta(ADMIN)));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "backup"), meta(ANI)));
+  });
+  it("petugas boleh membaca tetapi tidak boleh menulis", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "backup"), meta(ADMIN)));
+    await assertSucceeds(getDoc(doc(as(ANI), "meta", "backup")));
+    await assertFails(setDoc(doc(as(ANI), "meta", "backup"), meta(ANI)));
+  });
+  it("dokumen meta lain tidak bisa diakses", async () => {
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "lain"), { x: 1 }));
+  });
+});
+
 describe("kelola item", () => {
   it("petugas tidak boleh menambah, mengubah, atau menghapus item", async () => {
     await assertFails(setDoc(doc(as(ANI), "items", "baru"), { name: "X", stock: 1 }));

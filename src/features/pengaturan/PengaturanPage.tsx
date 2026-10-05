@@ -1,5 +1,6 @@
 import { Icon } from "../../components/Icon";
 import type { UserProfile } from "../../types";
+import { BackupCard } from "./BackupCard";
 import { PetugasSection } from "./PetugasSection";
 
 interface PengaturanPageProps {
@@ -9,6 +10,7 @@ interface PengaturanPageProps {
   onShowStock: () => void;
   onExport: () => void;
   onOpname: () => void;
+  notify: (text: string, kind: "success" | "error") => void;
 }
 
 /** Semua fungsi khusus admin dikumpulkan di sini supaya tampilan petugas tetap sederhana. */
@@ -19,6 +21,7 @@ export function PengaturanPage({
   onShowStock,
   onExport,
   onOpname,
+  notify,
 }: PengaturanPageProps) {
   return (
     <>
@@ -26,6 +29,7 @@ export function PengaturanPage({
       <p className="page-sub">Khusus admin: kelola barang, petugas, dan laporan.</p>
 
       <div className="settings-grid">
+        <BackupCard currentEmail={currentEmail} notify={notify} />
         <div className="settings-card">
           <Icon type="package" size={28} />
           <div className="settings-card-title">Barang</div>
