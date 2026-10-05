@@ -5,7 +5,7 @@ import { Modal } from "../../components/Modal";
 const SLIDES: { icon: IconName; title: string; text: string }[] = [
   {
     icon: "home",
-    title: "Selamat datang!",
+    title: "Selamat datang di e-Stok UGD!",
     text: "Aplikasi ini untuk mencatat obat dan bahan medis yang masuk dan keluar di UGD. Di Beranda ada dua tombol besar: hijau untuk Barang Masuk, oranye untuk Barang Keluar.",
   },
   {

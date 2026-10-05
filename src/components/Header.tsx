@@ -7,8 +7,8 @@ export function Header({ right }: { right?: ReactNode }) {
         +
       </div>
       <div>
-        <div className="header-title">UGD Liukang Tupabbiring</div>
-        <div className="header-sub">Catatan Obat & Bahan Medis</div>
+        <div className="header-title">e-Stok UGD</div>
+        <div className="header-sub">Puskesmas Liukang Tupabbiring</div>
       </div>
       {right && <div className="header-right">{right}</div>}
     </div>

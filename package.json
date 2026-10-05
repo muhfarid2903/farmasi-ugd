@@ -2,7 +2,7 @@
   "name": "farmasi-ugd",
   "private": true,
   "version": "1.0.0",
-  "description": "Sistem rekap obat & bahan medis UGD Puskesmas Liukang Tupabbiring",
+  "description": "e-Stok UGD: catatan stok obat & bahan medis UGD Puskesmas Liukang Tupabbiring",
   "type": "module",
   "scripts": {
     "dev": "vite",

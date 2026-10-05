@@ -47,7 +47,7 @@ export function BantuanPage({ onShowTour }: BantuanPageProps) {
               <b>Tambahkan ke layar utama</b>).
             </li>
             <li>
-              Selanjutnya buka dari ikon <b>Farmasi UGD</b> di layar HP.
+              Selanjutnya buka dari ikon <b>e-Stok UGD</b> di layar HP.
             </li>
           </ol>
           <p className="guide-sub">

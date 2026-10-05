@@ -13,9 +13,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "apple-touch-icon-180x180.png", "favicon.ico"],
       manifest: {
-        name: "UGD Puskesmas Liukang Tupabbiring",
-        short_name: "Farmasi UGD",
-        description: "Rekap stok obat dan bahan medis UGD",
+        name: "e-Stok UGD — Puskesmas Liukang Tupabbiring",
+        short_name: "e-Stok UGD",
+        description: "Catatan stok obat dan bahan medis UGD Puskesmas Liukang Tupabbiring",
         lang: "id",
         start_url: base,
         scope: base,

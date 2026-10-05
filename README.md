@@ -1,4 +1,4 @@
-# Farmasi UGD
+# e-Stok UGD
 
 Sistem rekap obat & bahan medis **UGD Puskesmas Liukang Tupabbiring, Kab. Pangkep**.
 
