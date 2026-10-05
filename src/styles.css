@@ -1641,3 +1641,41 @@ select:focus {
 .guide-sub {
   margin: 0.35rem 0;
 }
+
+/* ── Daftar obat darurat ───────────────────────────────────────── */
+.darurat-basis {
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+.darurat-summary {
+  margin-bottom: 1rem;
+}
+.darurat-summary .alert-row {
+  flex-wrap: wrap;
+}
+.darurat-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.6rem;
+}
+.darurat-section-head {
+  width: 100%;
+  min-height: 3.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 600;
+}
+.darurat-section-body {
+  padding: 0 1rem 0.75rem;
+}
+.darurat-section-body .review-line span:first-child {
+  color: var(--text);
+}

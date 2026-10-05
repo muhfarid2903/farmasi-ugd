@@ -10,6 +10,7 @@ interface PengaturanPageProps {
   onShowStock: () => void;
   onExport: () => void;
   onOpname: () => void;
+  onDarurat: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
@@ -21,6 +22,7 @@ export function PengaturanPage({
   onShowStock,
   onExport,
   onOpname,
+  onDarurat,
   notify,
 }: PengaturanPageProps) {
   return (
@@ -43,6 +45,18 @@ export function PengaturanPage({
             </button>
             <button className="btn btn-ghost" onClick={onShowStock}>
               Buka Stok
+            </button>
+          </div>
+        </div>
+        <div className="settings-card">
+          <Icon type="alert" size={28} />
+          <div className="settings-card-title">Daftar Obat Darurat</div>
+          <p className="settings-card-text">
+            Sesuaikan barang bertanda obat darurat dengan regulasi (KMK 4799/2021 dan Permenkes 47/2018).
+          </p>
+          <div className="settings-card-actions">
+            <button className="btn btn-primary" onClick={onDarurat}>
+              Buka Daftar Obat Darurat
             </button>
           </div>
         </div>

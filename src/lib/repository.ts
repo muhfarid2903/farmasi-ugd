@@ -270,3 +270,14 @@ export function subscribeBackupMeta(onData: (meta: BackupMeta | null) => void): 
 export function setBackupMeta(meta: BackupMeta): Promise<void> {
   return setDoc(backupMetaRef, meta);
 }
+
+/** Terapkan perubahan tanda darurat dan perbaikan satuan sekaligus (khusus admin). */
+export function applyDaruratChanges(
+  kritis: { id: string; kritis: boolean }[],
+  units: { id: string; unit: string }[],
+): Promise<void> {
+  const batch = writeBatch(db);
+  for (const c of kritis) batch.update(doc(itemsCol, c.id), { kritis: c.kritis });
+  for (const u of units) batch.update(doc(itemsCol, u.id), { unit: u.unit });
+  return batch.commit();
+}

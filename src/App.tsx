@@ -5,6 +5,7 @@ import { Icon, type IconName } from "./components/Icon";
 import { SyncBadge } from "./components/SyncBadge";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { BerandaPage } from "./features/beranda/BerandaPage";
+import { DaruratPage } from "./features/darurat/DaruratPage";
 import { ExportModal } from "./features/laporan/ExportModal";
 import { OpnamePage } from "./features/opname/OpnamePage";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
@@ -153,6 +154,13 @@ export default function App({ profile }: { profile: UserProfile }) {
     );
   }
 
+  function handleApplyDarurat(kritis: { id: string; kritis: boolean }[], units: { id: string; unit: string }[]) {
+    write(
+      repo.applyDaruratChanges(kritis, units),
+      `Daftar obat darurat diperbarui: ${kritis.filter((c) => c.kritis).length} ditambah, ${kritis.filter((c) => !c.kritis).length} dilepas`,
+    );
+  }
+
   function closeTour() {
     markTourSeen();
     setModal(null);
@@ -267,8 +275,12 @@ export default function App({ profile }: { profile: UserProfile }) {
               onShowStock={() => showStock()}
               onExport={openExport}
               onOpname={() => setPage("opname")}
+              onDarurat={() => setPage("darurat")}
               notify={notify}
             />
+          )}
+          {page === "darurat" && isAdmin && (
+            <DaruratPage items={items} onApply={handleApplyDarurat} onBack={() => setPage("pengaturan")} />
           )}
           {page === "opname" && isAdmin && (
             <OpnamePage items={items} onSave={handleSaveOpname} onBack={() => setPage("pengaturan")} />
