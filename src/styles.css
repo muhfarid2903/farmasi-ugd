@@ -1384,7 +1384,8 @@ select:focus {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  /* min(): satu kolom penuh bila layar lebih sempit dari 16rem (HP + huruf besar) */
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: 1rem;
 }
 .settings-card {
@@ -1393,6 +1394,8 @@ select:focus {
   border-radius: var(--radius);
   padding: 1.1rem;
   color: var(--primary);
+  /* Email panjang tanpa spasi tetap dipotong di dalam kotak */
+  overflow-wrap: anywhere;
 }
 .settings-card-title {
   font-size: 1.2rem;
@@ -1408,6 +1411,12 @@ select:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+/* Tulisan tombol boleh turun ke baris berikutnya supaya tidak keluar kotak */
+.settings-card-actions .btn {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
 }
 
 .guide-grid {
