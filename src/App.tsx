@@ -12,6 +12,7 @@ import { KosongkanPage } from "./features/opname/KosongkanPage";
 import { OpnamePage } from "./features/opname/OpnamePage";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
 import { TourModal } from "./features/bantuan/TourModal";
+import { PindahAlamatBanner, PindahAlamatScreen } from "./features/pindah/PindahAlamat";
 import { PengaturanPage } from "./features/pengaturan/PengaturanPage";
 import { ExpiryModal } from "./features/stok/ExpiryModal";
 import { ItemFormModal } from "./features/stok/ItemFormModal";
@@ -49,7 +50,8 @@ const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] 
   { page: "pengaturan", label: "Pengaturan", icon: "settings", adminOnly: true },
 ];
 
-export default function App({ profile }: { profile: UserProfile }) {
+/** `moved`: dibuka dari alamat lama padahal alamat baru sudah aktif. */
+export default function App({ profile, moved = false }: { profile: UserProfile; moved?: boolean }) {
   const { items, allItems, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("beranda");
   const [stokFilter, setStokFilter] = useState<StockFilter>("semua");
@@ -212,6 +214,9 @@ export default function App({ profile }: { profile: UserProfile }) {
     );
   }
 
+  // Pindah alamat hanya setelah semua catatan terkirim, supaya catatan offline tidak tertinggal di alamat lama
+  if (moved && syncStatus === "online") return <PindahAlamatScreen />;
+
   const lowCount = items.filter(isLowStock).length;
   const voidPreview = modal?.kind === "void" ? voidTxData(modal.tx, profile, todayStr(), "") : null;
 
@@ -252,6 +257,7 @@ export default function App({ profile }: { profile: UserProfile }) {
           ))}
         </nav>
         <main className="content">
+          {moved && <PindahAlamatBanner />}
           {error && <div className="form-error">Data tidak bisa dibuka: {error}</div>}
           {page === "beranda" && (
             <BerandaPage

@@ -1766,3 +1766,44 @@ select:focus {
 .merge-pick {
   align-items: center;
 }
+
+/* ── Pindah alamat ─────────────────────────────────────────────── */
+.pindah-screen {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+.pindah-lead {
+  font-size: 1.15rem;
+  color: var(--text);
+}
+.pindah-host {
+  display: block;
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin: 0.5rem 0;
+  word-break: break-all;
+}
+.pindah-steps {
+  margin: 1.25rem 0 1.5rem;
+  font-size: 1.05rem;
+}
+.pindah-screen .btn-lg {
+  width: 100%;
+  justify-content: center;
+}
+.pindah-banner {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+.pindah-banner svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
