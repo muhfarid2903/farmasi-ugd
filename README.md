@@ -19,7 +19,7 @@ Butuh Node.js 22 atau lebih baru.
 
 ```bash
 npm install
-npm run dev        # buka http://localhost:5173/farmasi-ugd/
+npm run dev        # buka http://localhost:5173/
 ```
 
 > **Perhatian:** secara bawaan aplikasi tersambung ke database **produksi** (nilai di `.env`).
@@ -78,7 +78,7 @@ npm run add-user -- nama@gmail.com "Nama Admin" admin
 ```
 
 Di Firebase Console: **Authentication → Sign-in method → Google** harus aktif, dan domain
-`muhfarid2903.github.io` harus ada di **Authentication → Settings → Authorized domains**.
+`ugd.balanglompo.com` (alamat aplikasi) harus ada di **Authentication → Settings → Authorized domains**.
 
 ## Cadangan data
 

@@ -2,8 +2,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
 
-// Situs diterbitkan di https://<user>.github.io/farmasi-ugd/
-const base = "/farmasi-ugd/";
+// Situs diterbitkan di https://ugd.balanglompo.com/ (domain sendiri di GitHub Pages)
+const base = "/";
 
 export default defineConfig({
   base,

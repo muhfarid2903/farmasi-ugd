@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon } from "../../components/Icon";
+import { APP_HOST } from "../../lib/domain";
 
 interface BantuanPageProps {
   onShowTour: () => void;
@@ -32,7 +33,7 @@ export function BantuanPage({ onShowTour }: BantuanPageProps) {
       <div className="guide-grid">
         <Guide title="Memasang aplikasi di HP">
           <p className="guide-sub">
-            Alamat aplikasi: <b>muhfarid2903.github.io/farmasi-ugd</b>
+            Alamat aplikasi: <b>{APP_HOST}</b>
           </p>
           <p className="guide-sub">
             <b>HP Android (Chrome):</b>
