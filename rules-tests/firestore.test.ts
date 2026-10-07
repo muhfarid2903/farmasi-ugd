@@ -280,6 +280,43 @@ describe("kelola item", () => {
   });
 });
 
+describe("gabungkan barang sama", () => {
+  /** Batch seperti mergeItems: koreksi keluar dari salinan, koreksi masuk ke barang tujuan, salinan ditandai. */
+  async function mergeBatch(email: string) {
+    const db = as(email);
+    const b = writeBatch(db);
+    const koreksi = { adjust: "koreksi", note: "Gabungan" };
+    b.set(doc(db, "transactions", "m-out"), txBase(email, { ...koreksi, itemId: "epi2", qty: 3 }));
+    b.update(doc(db, "items", "epi2"), {
+      stock: increment(-3),
+      lastTxId: "m-out",
+      mergedInto: "epi",
+      mergedAt: "2026-10-07T01:00:00Z",
+    });
+    b.set(doc(db, "transactions", "m-in"), txBase(email, { ...koreksi, type: "masuk", qty: 3 }));
+    b.update(doc(db, "items", "epi"), { stock: increment(3), lastTxId: "m-in", name: "Epinefrin", minStock: 5 });
+    return b.commit();
+  }
+  beforeEach(() =>
+    env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), "items", "epi2"), {
+        name: "Epinefrin (JKN)",
+        category: "Obat",
+        unit: "ampul",
+        stock: 3,
+        minStock: 0,
+        kritis: false,
+      }),
+    ),
+  );
+  it("admin boleh menyatukan barang beserta pemindahan stoknya", async () => {
+    await assertSucceeds(mergeBatch(ADMIN));
+  });
+  it("petugas tidak boleh menyatukan barang", async () => {
+    await assertFails(mergeBatch(ANI));
+  });
+});
+
 describe("kelola petugas", () => {
   const user = { name: "Citra", role: "petugas", active: true, createdAt: "2026-10-05T00:00:00Z" };
   it("petugas tidak boleh mendaftarkan atau mengubah petugas", async () => {

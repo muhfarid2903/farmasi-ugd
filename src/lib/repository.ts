@@ -18,6 +18,7 @@ import type { Item, Opname, OpnameEntry, Transaction, UserProfile } from "../typ
 import { nowISO } from "./date";
 import { db } from "./firebase";
 import { todayStr } from "./date";
+import type { MergeGroup, MergeUpdate } from "./merge";
 import { stockDelta, type TxData } from "./stock";
 
 const itemsCol = collection(db, "items");
@@ -284,5 +285,43 @@ export function applyDaruratChanges(
   const batch = writeBatch(db);
   for (const c of kritis) batch.update(doc(itemsCol, c.id), { kritis: c.kritis });
   for (const u of units) batch.update(doc(itemsCol, u.id), { unit: u.unit });
+  return batch.commit();
+}
+
+/**
+ * Gabungkan beberapa barang yang sama menjadi satu (khusus admin), dalam satu batch.
+ * - Stok tiap salinan dipindah ke barang yang dipertahankan lewat transaksi koreksi (ada jejaknya).
+ * - Salinan tidak dihapus: ditandai `mergedInto` lalu disembunyikan; riwayatnya tetap tersimpan.
+ * - Barang yang dipertahankan memakai nama baru, tanda darurat, minimum stok, dan ED dari `update`.
+ */
+export function mergeItems(group: MergeGroup, update: MergeUpdate, by: Actor): Promise<void> {
+  const [keep, ...others] = group.items;
+  const batch = writeBatch(db);
+  const at = nowISO();
+  let moved = 0;
+  for (const o of others) {
+    const data = adjustmentTx(o, 0, by, "koreksi", `Digabung ke ${update.name}: stok ${o.stock} dipindah`);
+    const txRef = doc(txCol);
+    if (data) {
+      batch.set(txRef, { ...data, createdAt: at });
+      moved += o.stock;
+    }
+    batch.update(doc(itemsCol, o.id), {
+      mergedInto: keep.id,
+      mergedAt: at,
+      ...(data ? { stock: increment(stockDelta(data.type, data.qty)), lastTxId: txRef.id } : {}),
+    });
+  }
+  const names = others.map((o) => o.name).join(", ");
+  const data = adjustmentTx({ ...keep, stock: 0 }, moved, by, "koreksi", `Gabungan dari ${names}`);
+  const txRef = doc(txCol);
+  if (data) batch.set(txRef, { ...data, itemName: update.name, createdAt: at });
+  batch.update(doc(itemsCol, keep.id), {
+    name: update.name,
+    kritis: update.kritis,
+    minStock: update.minStock,
+    ...(update.expiry ? { expiry: update.expiry } : {}),
+    ...(data ? { stock: increment(stockDelta(data.type, data.qty)), lastTxId: txRef.id } : {}),
+  });
   return batch.commit();
 }

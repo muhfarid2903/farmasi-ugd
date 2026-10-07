@@ -1704,3 +1704,65 @@ select:focus {
 .kosongkan-steps label {
   display: block;
 }
+
+/* ── Gabungkan barang sama ─────────────────────────────────────── */
+.merge-backup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.merge-card {
+  color: var(--text);
+  margin-top: 0.75rem;
+}
+.merge-card .review-line:first-child {
+  border-top: none;
+}
+.merge-card .review-line span:first-child {
+  color: var(--text);
+}
+.merge-stock {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+.merge-name-label {
+  display: block;
+  margin-top: 0.75rem;
+}
+.merge-name-label .form-input {
+  margin-top: 0.3rem;
+}
+.merge-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.merge-warn {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin: 0.75rem 0 0;
+}
+.merge-warn svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+.merge-manual-title {
+  margin-top: 2rem;
+}
+.merge-pick {
+  align-items: center;
+}

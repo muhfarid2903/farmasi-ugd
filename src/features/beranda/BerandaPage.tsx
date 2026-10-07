@@ -13,6 +13,8 @@ const RECENT_LIMIT = 5;
 interface BerandaPageProps {
   userName: string;
   items: Item[];
+  /** Termasuk barang yang sudah digabung, untuk satuan pada catatan lama. */
+  allItems: Item[];
   transactions: Transaction[];
   onNewTx: (type: TxType) => void;
   onShowStock: (filter?: StockFilter) => void;
@@ -27,6 +29,7 @@ interface BerandaPageProps {
 export function BerandaPage({
   userName,
   items,
+  allItems,
   transactions,
   onNewTx,
   onShowStock,
@@ -41,7 +44,7 @@ export function BerandaPage({
   }, [items]);
   const expiring = useMemo(() => expiringItems(items, todayStr()), [items]);
   const anyExpiry = useMemo(() => items.some((i) => i.expiry), [items]);
-  const unitOf = useMemo(() => new Map(items.map((i) => [i.id, i.unit])), [items]);
+  const unitOf = useMemo(() => new Map(allItems.map((i) => [i.id, i.unit])), [allItems]);
   const recent = transactions.slice(0, RECENT_LIMIT);
 
   return (

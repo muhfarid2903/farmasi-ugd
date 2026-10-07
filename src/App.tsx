@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FontSizeModal } from "./components/FontSizeModal";
 import { Header } from "./components/Header";
 import { Icon, type IconName } from "./components/Icon";
@@ -7,6 +7,7 @@ import { Toast, type ToastMessage } from "./components/Toast";
 import { BerandaPage } from "./features/beranda/BerandaPage";
 import { DaruratPage } from "./features/darurat/DaruratPage";
 import { ExportModal } from "./features/laporan/ExportModal";
+import { GabungPage } from "./features/gabung/GabungPage";
 import { KosongkanPage } from "./features/opname/KosongkanPage";
 import { OpnamePage } from "./features/opname/OpnamePage";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
@@ -25,6 +26,7 @@ import { useInventory } from "./hooks/useInventory";
 import { nowISO, todayStr } from "./lib/date";
 import { backupDue, daysSince } from "./lib/backup";
 import { expiryPatch, formatExpiry } from "./lib/expiry";
+import { withMergedIds, type MergeGroup, type MergeUpdate } from "./lib/merge";
 import * as repo from "./lib/repository";
 import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type StockFilter } from "./lib/stock";
 import type { Item, OpnameEntry, Page, Transaction, TxType, UserProfile } from "./types";
@@ -48,7 +50,7 @@ const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] 
 ];
 
 export default function App({ profile }: { profile: UserProfile }) {
-  const { items, transactions, loading, syncStatus, error } = useInventory();
+  const { items, allItems, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("beranda");
   const [stokFilter, setStokFilter] = useState<StockFilter>("semua");
   const [modal, setModal] = useState<ModalState>(null);
@@ -89,7 +91,13 @@ export default function App({ profile }: { profile: UserProfile }) {
     [notify, reportFailure],
   );
 
-  const userCanVoid = useCallback((tx: Transaction) => canVoid(tx, profile), [profile]);
+  // Catatan barang yang sudah digabung tidak dibatalkan lagi: stoknya sudah dipindah ke barang tujuan
+  const userCanVoid = useCallback(
+    (tx: Transaction) => canVoid(tx, profile) && items.some((i) => i.id === tx.itemId),
+    [profile, items],
+  );
+  // Untuk "barang yang sering dipakai": riwayat salinan lama dihitung pada barang hasil gabungan
+  const wizardTxs = useMemo(() => withMergedIds(transactions, allItems), [transactions, allItems]);
 
   function handleWizardSave(data: NewTx): string {
     const item = items.find((i) => i.id === data.itemId);
@@ -169,6 +177,15 @@ export default function App({ profile }: { profile: UserProfile }) {
     );
   }
 
+  function handleMerge(groups: { group: MergeGroup; update: MergeUpdate }[]) {
+    write(
+      Promise.all(groups.map(({ group, update }) => repo.mergeItems(group, update, profile))).then(() => undefined),
+      groups.length === 1
+        ? `${groups[0].group.items.length} barang disatukan menjadi ${groups[0].update.name}`
+        : `${groups.length} kelompok barang disatukan`,
+    );
+  }
+
   function closeTour() {
     markTourSeen();
     setModal(null);
@@ -240,6 +257,7 @@ export default function App({ profile }: { profile: UserProfile }) {
             <BerandaPage
               userName={profile.name}
               items={items}
+              allItems={allItems}
               transactions={transactions}
               onNewTx={openNewTx}
               onShowStock={showStock}
@@ -266,7 +284,7 @@ export default function App({ profile }: { profile: UserProfile }) {
           )}
           {page === "riwayat" && (
             <TransaksiPage
-              items={items}
+              items={allItems}
               transactions={transactions}
               onNewTx={openNewTx}
               canVoid={userCanVoid}
@@ -285,6 +303,7 @@ export default function App({ profile }: { profile: UserProfile }) {
               onOpname={() => setPage("opname")}
               onDarurat={() => setPage("darurat")}
               onKosongkan={() => setPage("kosongkan")}
+              onGabung={() => setPage("gabung")}
               notify={notify}
             />
           )}
@@ -299,6 +318,14 @@ export default function App({ profile }: { profile: UserProfile }) {
           )}
           {page === "darurat" && isAdmin && (
             <DaruratPage items={items} onApply={handleApplyDarurat} onBack={() => setPage("pengaturan")} />
+          )}
+          {page === "gabung" && isAdmin && (
+            <GabungPage
+              items={items}
+              onMerge={handleMerge}
+              onBackup={() => setPage("pengaturan")}
+              onBack={() => setPage("pengaturan")}
+            />
           )}
           {page === "opname" && isAdmin && (
             <OpnamePage items={items} onSave={handleSaveOpname} onBack={() => setPage("pengaturan")} />
@@ -325,7 +352,7 @@ export default function App({ profile }: { profile: UserProfile }) {
         <TxWizard
           type={modal.type}
           items={items}
-          transactions={transactions}
+          transactions={wizardTxs}
           operatorName={profile.name}
           onSave={handleWizardSave}
           onUndo={handleWizardUndo}
@@ -352,7 +379,7 @@ export default function App({ profile }: { profile: UserProfile }) {
         <ExpiryModal item={modal.item} onSave={(expiry) => handleSetExpiry(modal.item, expiry)} onClose={closeModal} />
       )}
       {modal?.kind === "export" && (
-        <ExportModal items={items} transactions={transactions} onClose={closeModal} notify={notify} />
+        <ExportModal items={allItems} transactions={transactions} onClose={closeModal} notify={notify} />
       )}
       {(modal?.kind === "tour" || (firstVisit && modal === null)) && <TourModal onClose={closeTour} />}
       {modal?.kind === "font" && <FontSizeModal scale={fontScale} onChange={setFontScale} onClose={closeModal} />}

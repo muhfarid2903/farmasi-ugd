@@ -1,4 +1,5 @@
 import type { Item, Transaction } from "../types";
+import { activeItems, withMergedIds } from "./merge";
 import { stockDelta } from "./stock";
 
 export interface RecapRow {
@@ -20,8 +21,12 @@ export interface RecapRow {
  *
  * Transaksi yang dibatalkan beserta pembatalannya dalam bulan yang sama tidak dihitung sebagai masuk/keluar
  * (saling meniadakan). Penyesuaian (opname/koreksi) masuk kolom tersendiri.
+ *
+ * `allItems` boleh memuat barang yang sudah digabung: transaksinya dihitung pada barang tujuannya.
  */
-export function monthlyRecap(items: Item[], transactions: Transaction[], month: string): RecapRow[] {
+export function monthlyRecap(allItems: Item[], allTransactions: Transaction[], month: string): RecapRow[] {
+  const items = activeItems(allItems);
+  const transactions = withMergedIds(allTransactions, allItems);
   const byId = new Map(transactions.map((t) => [t.id, t]));
   const inMonth = (t: Transaction) => t.date.startsWith(month);
   const after = (t: Transaction) => t.date.slice(0, 7) > month;

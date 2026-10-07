@@ -12,6 +12,7 @@ interface PengaturanPageProps {
   onOpname: () => void;
   onDarurat: () => void;
   onKosongkan: () => void;
+  onGabung: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
@@ -25,6 +26,7 @@ export function PengaturanPage({
   onOpname,
   onDarurat,
   onKosongkan,
+  onGabung,
   notify,
 }: PengaturanPageProps) {
   return (
@@ -47,6 +49,19 @@ export function PengaturanPage({
             </button>
             <button className="btn btn-ghost" onClick={onShowStock}>
               Buka Stok
+            </button>
+          </div>
+        </div>
+        <div className="settings-card">
+          <Icon type="package" size={28} />
+          <div className="settings-card-title">Gabungkan Barang Sama</div>
+          <p className="settings-card-text">
+            Satukan barang yang tercatat lebih dari sekali, misalnya beda sumber dana (DAK, DAU, JKN). Stoknya
+            dijumlahkan dan riwayatnya tetap tersimpan.
+          </p>
+          <div className="settings-card-actions">
+            <button className="btn btn-primary" onClick={onGabung}>
+              Buka Gabungkan Barang
             </button>
           </div>
         </div>

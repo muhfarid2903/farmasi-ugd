@@ -39,6 +39,9 @@ export interface Item {
   lastTxId?: string;
   /** Tanggal kedaluwarsa terdekat, "YYYY-MM". Kosong jika tidak diketahui atau stok habis. */
   expiry?: string;
+  /** Diisi bila barang ini sudah digabung ke barang lain (id tujuannya). Barang ini lalu disembunyikan. */
+  mergedInto?: string;
+  mergedAt?: string;
 }
 
 /** Dokumen di koleksi `transactions`. `date` berformat YYYY-MM-DD (tanggal lokal). */
@@ -99,7 +102,8 @@ export interface UserProfile {
   createdAt?: string;
 }
 
-export type Page = "beranda" | "stok" | "riwayat" | "bantuan" | "pengaturan" | "opname" | "darurat" | "kosongkan";
+export type Page =
+  "beranda" | "stok" | "riwayat" | "bantuan" | "pengaturan" | "opname" | "darurat" | "kosongkan" | "gabung";
 
 /** online = tersambung; pending = ada perubahan lokal belum terkirim; offline = memakai cache lokal. */
 export type SyncStatus = "loading" | "online" | "pending" | "offline";

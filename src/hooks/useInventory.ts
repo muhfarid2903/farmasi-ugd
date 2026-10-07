@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Item, SyncStatus, Transaction } from "../types";
+import { activeItems } from "../lib/merge";
 import { subscribeItems, subscribeTransactions, type SnapshotMeta } from "../lib/repository";
 
 const initialMeta: SnapshotMeta = { fromCache: true, hasPendingWrites: false };
 
-/** Data item & transaksi real-time dari Firestore, beserta status sinkronisasi. */
+/**
+ * Data item & transaksi real-time dari Firestore, beserta status sinkronisasi.
+ * `items` hanya barang aktif; `allItems` juga memuat salinan yang sudah digabung (untuk rekap & riwayat).
+ */
 export function useInventory() {
   const [items, setItems] = useState<Item[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -48,6 +52,7 @@ export function useInventory() {
     };
   }, []);
 
+  const active = useMemo(() => activeItems(items), [items]);
   const loading = !itemsLoaded || !txLoaded;
   let syncStatus: SyncStatus;
   if (loading) syncStatus = "loading";
@@ -55,5 +60,5 @@ export function useInventory() {
   else if (!browserOnline || itemsMeta.fromCache || txMeta.fromCache) syncStatus = "offline";
   else syncStatus = "online";
 
-  return { items, transactions, loading, syncStatus, error };
+  return { items: active, allItems: items, transactions, loading, syncStatus, error };
 }
