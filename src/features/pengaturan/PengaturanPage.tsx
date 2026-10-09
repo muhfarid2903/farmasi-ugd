@@ -13,6 +13,7 @@ interface PengaturanPageProps {
   onDarurat: () => void;
   onKosongkan: () => void;
   onGabung: () => void;
+  onLplpo: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
@@ -27,6 +28,7 @@ export function PengaturanPage({
   onDarurat,
   onKosongkan,
   onGabung,
+  onLplpo,
   notify,
 }: PengaturanPageProps) {
   return (
@@ -94,11 +96,14 @@ export function PengaturanPage({
           <Icon type="download" size={28} />
           <div className="settings-card-title">Laporan</div>
           <p className="settings-card-text">
-            Unduh daftar catatan barang masuk/keluar, atau rekap per barang (stok awal, masuk, keluar, stok akhir) per
+            Cetak <b>LPLPO</b> untuk farmasi puskesmas, atau unduh catatan barang masuk/keluar dan rekap per barang per
             bulan.
           </p>
           <div className="settings-card-actions">
-            <button className="btn btn-primary" onClick={onExport}>
+            <button className="btn btn-primary" onClick={onLplpo}>
+              <Icon type="printer" size={18} /> Buat LPLPO
+            </button>
+            <button className="btn btn-ghost" onClick={onExport}>
               <Icon type="download" size={18} /> Unduh Laporan
             </button>
           </div>

@@ -94,6 +94,13 @@ const paths = {
       <path d="M4 9h11a5 5 0 010 10h-3" />
     </>
   ),
+  printer: (
+    <>
+      <path d="M6 9V3h12v6" />
+      <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+      <rect x="6" y="14" width="12" height="7" />
+    </>
+  ),
   logout: (
     <>
       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildItemRecapCSV, buildRecapCSV, csvCell } from "../src/lib/csv";
-import { formatDate, monthLabel, todayStr } from "../src/lib/date";
+import { formatDate, monthLabel, monthName, shiftMonth, todayStr } from "../src/lib/date";
 import type { Transaction } from "../src/types";
 
 describe("todayStr", () => {
@@ -22,6 +22,17 @@ describe("formatDate", () => {
 
 describe("monthLabel", () => {
   it("menampilkan nama bulan Indonesia", () => expect(monthLabel("2026-10")).toBe("Oktober 2026"));
+  it("monthName tanpa tahun", () => expect(monthName("2026-01")).toBe("Januari"));
+});
+
+describe("shiftMonth", () => {
+  it("maju dan mundur, termasuk melewati pergantian tahun", () => {
+    expect(shiftMonth("2026-10", 1)).toBe("2026-11");
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+    expect(shiftMonth("2026-10", -13)).toBe("2025-09");
+    expect(shiftMonth("2026-10", 0)).toBe("2026-10");
+  });
 });
 
 describe("csvCell", () => {

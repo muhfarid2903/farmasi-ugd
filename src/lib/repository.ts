@@ -18,6 +18,7 @@ import type { Item, Opname, OpnameEntry, Transaction, UserProfile } from "../typ
 import { nowISO } from "./date";
 import { db } from "./firebase";
 import { todayStr } from "./date";
+import type { Signer } from "./lplpo";
 import type { MergeGroup, MergeUpdate } from "./merge";
 import { stockDelta, type TxData } from "./stock";
 
@@ -275,6 +276,27 @@ export function subscribeBackupMeta(onData: (meta: BackupMeta | null) => void): 
 
 export function setBackupMeta(meta: BackupMeta): Promise<void> {
   return setDoc(backupMetaRef, meta);
+}
+
+/** Penanda tangan LPLPO: dibaca semua petugas, diubah admin. */
+export interface LplpoMeta {
+  signers: Signer[];
+  by: string;
+  updatedAt: string;
+}
+
+const lplpoMetaRef = doc(db, "meta", "lplpo");
+
+export function subscribeLplpoMeta(onData: (meta: LplpoMeta | null) => void): Unsubscribe {
+  return onSnapshot(
+    lplpoMetaRef,
+    (snap) => onData(snap.exists() ? (snap.data() as LplpoMeta) : null),
+    () => onData(null),
+  );
+}
+
+export function setLplpoSigners(signers: Signer[], by: string): Promise<void> {
+  return setDoc(lplpoMetaRef, { signers, by, updatedAt: nowISO() });
 }
 
 /** Terapkan perubahan tanda darurat dan perbaikan satuan sekaligus (khusus admin). */

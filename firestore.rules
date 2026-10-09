@@ -78,6 +78,17 @@ service cloud.firestore {
         && request.resource.data.by == email();
     }
 
+    // Penanda tangan LPLPO (jabatan, nama, NIP): dibaca petugas, ditulis admin
+    match /meta/lplpo {
+      allow read: if isStaff();
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasOnly(['signers', 'by', 'updatedAt'])
+        && request.resource.data.signers is list
+        && request.resource.data.signers.size() <= 4
+        && request.resource.data.updatedAt is string
+        && request.resource.data.by == email();
+    }
+
     // Riwayat stok opname: dibuat admin, tidak bisa diubah atau dihapus
     match /opname/{opnameId} {
       allow read: if isStaff();

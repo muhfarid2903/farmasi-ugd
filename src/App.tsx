@@ -9,6 +9,7 @@ import { DaruratPage } from "./features/darurat/DaruratPage";
 import { ExportModal } from "./features/laporan/ExportModal";
 import { GabungPage } from "./features/gabung/GabungPage";
 import { KosongkanPage } from "./features/opname/KosongkanPage";
+import { LplpoPage } from "./features/lplpo/LplpoPage";
 import { OpnamePage } from "./features/opname/OpnamePage";
 import { BantuanPage } from "./features/bantuan/BantuanPage";
 import { TourModal } from "./features/bantuan/TourModal";
@@ -27,6 +28,7 @@ import { useInventory } from "./hooks/useInventory";
 import { nowISO, todayStr } from "./lib/date";
 import { backupDue, daysSince } from "./lib/backup";
 import { expiryPatch, formatExpiry } from "./lib/expiry";
+import type { Signer } from "./lib/lplpo";
 import { withMergedIds, type MergeGroup, type MergeUpdate } from "./lib/merge";
 import * as repo from "./lib/repository";
 import { canVoid, isLowStock, stockChanges, validateStockChanges, voidTxData, type StockFilter } from "./lib/stock";
@@ -54,6 +56,8 @@ const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] 
 export default function App({ profile, moved = false }: { profile: UserProfile; moved?: boolean }) {
   const { items, allItems, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("beranda");
+  /** Halaman tujuan tombol "Kembali" di LPLPO: tempat LPLPO dibuka. */
+  const [lplpoBack, setLplpoBack] = useState<Page>("beranda");
   const [stokFilter, setStokFilter] = useState<StockFilter>("semua");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -197,6 +201,16 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
     write(repo.saveUser(user), isNew ? `${user.name} ditambahkan` : `Data ${user.name} disimpan`);
   }
 
+  function handleSaveSigners(signers: Signer[]) {
+    write(repo.setLplpoSigners(signers, profile.email), "Penanda tangan LPLPO disimpan");
+  }
+
+  function openLplpo() {
+    setLplpoBack(page);
+    setModal(null);
+    setPage("lplpo");
+  }
+
   const openNewTx = (type: TxType) => setModal({ kind: "tx", type });
   const openVoidTx = (tx: Transaction) => setModal({ kind: "void", tx });
   const openAddItem = () => setModal({ kind: "item" });
@@ -269,6 +283,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onShowStock={showStock}
               onShowHistory={() => setPage("riwayat")}
               onExport={openExport}
+              onLplpo={openLplpo}
               onAddItem={isAdmin ? openAddItem : undefined}
               backupReminder={
                 isAdmin && backupMeta !== undefined && backupDue(backupMeta?.lastBackupAt ?? null)
@@ -310,7 +325,18 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onDarurat={() => setPage("darurat")}
               onKosongkan={() => setPage("kosongkan")}
               onGabung={() => setPage("gabung")}
+              onLplpo={openLplpo}
               notify={notify}
+            />
+          )}
+          {page === "lplpo" && (
+            <LplpoPage
+              items={items}
+              allItems={allItems}
+              transactions={transactions}
+              isAdmin={isAdmin}
+              onSaveSigners={handleSaveSigners}
+              onBack={() => setPage(lplpoBack)}
             />
           )}
           {page === "kosongkan" && isAdmin && (
@@ -385,7 +411,13 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
         <ExpiryModal item={modal.item} onSave={(expiry) => handleSetExpiry(modal.item, expiry)} onClose={closeModal} />
       )}
       {modal?.kind === "export" && (
-        <ExportModal items={allItems} transactions={transactions} onClose={closeModal} notify={notify} />
+        <ExportModal
+          items={allItems}
+          transactions={transactions}
+          onClose={closeModal}
+          onOpenLplpo={openLplpo}
+          notify={notify}
+        />
       )}
       {(modal?.kind === "tour" || (firstVisit && modal === null)) && <TourModal onClose={closeTour} />}
       {modal?.kind === "font" && <FontSizeModal scale={fontScale} onChange={setFontScale} onClose={closeModal} />}

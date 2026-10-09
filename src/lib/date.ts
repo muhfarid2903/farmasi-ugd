@@ -37,6 +37,19 @@ export function monthLabel(yyyyMm: string): string {
   return `${BULAN[Number(m) - 1] ?? m} ${y}`;
 }
 
+/** "2026-10" → "Oktober" */
+export function monthName(yyyyMm: string): string {
+  const m = yyyyMm.split("-")[1];
+  return BULAN[Number(m) - 1] ?? m;
+}
+
+/** Geser bulan "YYYY-MM" sebanyak `delta` bulan, mis. ("2026-12", 1) → "2027-01". */
+export function shiftMonth(yyyyMm: string, delta: number): string {
+  const [y, m] = yyyyMm.split("-").map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`;
+}
+
 /** Salam sesuai jam: pagi, siang, sore, atau malam. */
 export function greeting(now: Date = new Date()): string {
   const h = now.getHours();

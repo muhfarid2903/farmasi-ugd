@@ -87,6 +87,21 @@ export function BantuanPage({ onShowTour }: BantuanPageProps) {
           </ol>
         </Guide>
 
+        <Guide title="Membuat LPLPO (laporan & permintaan ke farmasi)">
+          <ol className="guide-steps">
+            <li>
+              Di <b>Beranda</b>, tekan <b>Buat LPLPO</b>.
+            </li>
+            <li>Pilih bulan yang dilaporkan (biasanya bulan lalu).</li>
+            <li>
+              Periksa angka <b>Permintaan</b>. Angka sudah diusulkan aplikasi; ubah bila perlu.
+            </li>
+            <li>
+              Tekan <b>Cetak LPLPO</b>. Pilih printer, atau <b>Simpan sebagai PDF</b> lalu kirim ke farmasi.
+            </li>
+          </ol>
+        </Guide>
+
         <Guide title="Salah mencatat?">
           <ul className="guide-points">
             <li>

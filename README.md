@@ -3,7 +3,8 @@
 Sistem rekap obat & bahan medis **UGD Puskesmas Liukang Tupabbiring, Kab. Pangkep**.
 
 Buku stok digital untuk depo UGD: mencatat barang masuk (dari farmasi) dan keluar (dipakai pasien),
-memantau stok obat & bahan emergency (kritis), dan membuat rekap bulanan. Data tersinkron real-time
+memantau stok obat & bahan emergency (kritis), membuat rekap bulanan, dan mencetak LPLPO untuk farmasi
+puskesmas. Data tersinkron real-time
 ke semua perangkat petugas dan **tetap bisa dicatat saat sinyal hilang**.
 
 ## Teknologi
@@ -48,6 +49,7 @@ src/
     stok/        daftar item, form tambah/edit item
     transaksi/   riwayat, form barang masuk/keluar
     laporan/     ekspor rekap CSV
+    lplpo/       LPLPO siap cetak (laporan pemakaian & permintaan ke farmasi)
   components/    komponen umum (Modal, Icon, Header, ...)
   hooks/         useInventory: data real-time + status sinkron
   lib/
@@ -94,6 +96,21 @@ Hasilnya satu file JSON berisi seluruh barang, catatan transaksi, petugas, dan r
 
 Skrip `npm run seed` dan `npm run add-user` hanya berfungsi untuk project Firebase baru yang aturan
 keamanannya belum diterbitkan.
+
+## LPLPO (laporan & permintaan ke farmasi)
+
+**Beranda → Buat LPLPO** menyusun LPLPO bulanan dari catatan masuk/keluar, mengikuti form kertas
+Dinkes Pangkep (16 kolom), lalu dicetak lewat dialog cetak browser (kertas mendatar, bisa disimpan
+sebagai PDF).
+
+- Kolom 4–8 dihitung dari rekap bulanan (`src/lib/lplpo.ts`). Form tidak punya kolom penyesuaian, jadi
+  selisih stok opname/koreksi dihitung ke **Stok Awal** dan dicatat di **Ket**. Penerimaan dan Pemakaian
+  hanya berisi barang yang benar-benar diterima dan dipakai.
+- Usulan permintaan = pemakaian + stok minimum − sisa stok (tidak kurang dari 0). Petugas bisa mengubahnya;
+  isiannya disimpan di HP per bulan, tidak di database.
+- Kolom Pemberian (10–15) dikosongkan untuk diisi farmasi.
+- Penanda tangan (jabatan, nama, NIP) disimpan admin di dokumen `meta/lplpo`, bukan di kode, karena repo
+  ini publik.
 
 ## Deploy
 

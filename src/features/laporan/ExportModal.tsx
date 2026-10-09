@@ -11,10 +11,12 @@ interface ExportModalProps {
   items: Item[];
   transactions: Transaction[];
   onClose: () => void;
+  /** Buka halaman LPLPO (laporan & permintaan ke farmasi, siap cetak). */
+  onOpenLplpo: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
-export function ExportModal({ items, transactions, onClose, notify }: ExportModalProps) {
+export function ExportModal({ items, transactions, onClose, onOpenLplpo, notify }: ExportModalProps) {
   /** catatan = daftar transaksi; rekap = per barang (stok awal, masuk, keluar, akhir) per bulan. */
   const [kind, setKind] = useState<"catatan" | "rekap">("catatan");
   const [mode, setMode] = useState<"bulan" | "rentang">("bulan");
@@ -74,8 +76,17 @@ export function ExportModal({ items, transactions, onClose, notify }: ExportModa
     <Modal title="Unduh Laporan" onClose={onClose}>
       {!csv ? (
         <>
+          <div className="export-lplpo">
+            <div>
+              <div className="semibold">LPLPO untuk farmasi puskesmas</div>
+              <p className="form-hint">Laporan pemakaian dan permintaan obat, siap cetak seperti form kertas.</p>
+            </div>
+            <button className="btn btn-primary" onClick={onOpenLplpo}>
+              <Icon type="printer" size={18} /> Buka LPLPO
+            </button>
+          </div>
           <div className="form-group">
-            <label className="form-label">Jenis laporan</label>
+            <label className="form-label">Atau unduh file Excel</label>
             <div className="btn-group">
               <button
                 className={`btn ${kind === "catatan" ? "btn-primary" : "btn-ghost"}`}

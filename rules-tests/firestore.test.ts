@@ -266,6 +266,35 @@ describe("keterangan cadangan", () => {
   });
 });
 
+describe("penanda tangan LPLPO", () => {
+  const signer = { role: "Mengetahui,", title: "Kepala Puskesmas", name: "Nama", nip: "123" };
+  const meta = (by: string, extra: Record<string, unknown> = {}) => ({
+    signers: [signer, signer, signer],
+    by,
+    updatedAt: "2026-10-10T01:00:00Z",
+    ...extra,
+  });
+  it("admin boleh menyimpan penanda tangan atas namanya sendiri", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ADMIN)));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ANI)));
+  });
+  it("petugas boleh membaca tetapi tidak boleh mengubah", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ADMIN)));
+    await assertSucceeds(getDoc(doc(as(ANI), "meta", "lplpo")));
+    await assertFails(setDoc(doc(as(ANI), "meta", "lplpo"), meta(ANI)));
+    await assertFails(getDoc(doc(as(ASING), "meta", "lplpo")));
+  });
+  it("kolom tak dikenal, bukan daftar, atau lebih dari 4 penanda tangan ditolak", async () => {
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ADMIN, { x: 1 })));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ADMIN, { signers: "Nama" })));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ADMIN, { signers: Array(5).fill(signer) })));
+  });
+  it("tidak bisa dihapus", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "lplpo"), meta(ADMIN)));
+    await assertFails(deleteDoc(doc(as(ADMIN), "meta", "lplpo")));
+  });
+});
+
 describe("kelola item", () => {
   it("petugas tidak boleh menambah, mengubah, atau menghapus item", async () => {
     await assertFails(setDoc(doc(as(ANI), "items", "baru"), { name: "X", stock: 1 }));
