@@ -20,7 +20,6 @@ interface BerandaPageProps {
   onShowStock: (filter?: StockFilter) => void;
   onShowHistory: () => void;
   onExport: () => void;
-  onLplpo: () => void;
   /** Kosong jika pengguna bukan admin. */
   onAddItem?: () => void;
   /** Diisi untuk admin yang sudah lama tidak mencadangkan data. */
@@ -36,7 +35,6 @@ export function BerandaPage({
   onShowStock,
   onShowHistory,
   onExport,
-  onLplpo,
   onAddItem,
   backupReminder,
 }: BerandaPageProps) {
@@ -191,9 +189,6 @@ export function BerandaPage({
       </button>
 
       <div className="home-links">
-        <button className="btn btn-ghost" onClick={onLplpo}>
-          <Icon type="printer" size={18} /> Buat LPLPO
-        </button>
         <button className="btn btn-ghost" onClick={onExport}>
           <Icon type="download" size={18} /> Unduh Laporan (Excel)
         </button>

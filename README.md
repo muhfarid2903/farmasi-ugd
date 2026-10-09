@@ -99,7 +99,7 @@ keamanannya belum diterbitkan.
 
 ## LPLPO (laporan & permintaan ke farmasi)
 
-**Beranda → Buat LPLPO** menyusun LPLPO bulanan dari catatan masuk/keluar, mengikuti form kertas
+Menu **LPLPO** (untuk semua petugas) menyusun LPLPO bulanan dari catatan masuk/keluar, mengikuti form kertas
 Dinkes Pangkep (16 kolom), lalu dicetak lewat dialog cetak browser (kertas mendatar, bisa disimpan
 sebagai PDF).
 

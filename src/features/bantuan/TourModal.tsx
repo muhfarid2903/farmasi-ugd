@@ -16,7 +16,7 @@ const SLIDES: { icon: IconName; title: string; text: string }[] = [
   {
     icon: "undo",
     title: "Salah catat? Tidak apa-apa",
-    text: "Tekan Batalkan, stok kembali seperti semula. Tidak ada sinyal? Tetap catat saja, nanti terkirim sendiri. Panduan lengkap ada di menu Bantuan.",
+    text: "Tekan Batalkan, stok kembali seperti semula. Tidak ada sinyal? Tetap catat saja, nanti terkirim sendiri. Panduan lengkap ada di tombol Bantuan di bagian atas layar.",
   },
 ];
 

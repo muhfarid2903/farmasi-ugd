@@ -61,11 +61,10 @@ interface LplpoPageProps {
   transactions: Transaction[];
   isAdmin: boolean;
   onSaveSigners: (signers: Signer[]) => void;
-  onBack: () => void;
 }
 
 /** LPLPO dari UGD ke farmasi puskesmas: angka diisi otomatis, permintaan bisa diubah, lalu dicetak. */
-export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigners, onBack }: LplpoPageProps) {
+export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigners }: LplpoPageProps) {
   const today = todayStr();
   const thisMonth = today.slice(0, 7);
   const [month, setMonth] = useState(() => shiftMonth(thisMonth, -1));
@@ -169,9 +168,6 @@ export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigner
 
   return (
     <>
-      <button className="btn-link" onClick={onBack}>
-        ← Kembali
-      </button>
       <h1 className="page-title">LPLPO</h1>
       <p className="page-sub">
         Laporan Pemakaian dan Lembar Permintaan Obat untuk <b>farmasi puskesmas</b>. Angka diisi dari catatan barang

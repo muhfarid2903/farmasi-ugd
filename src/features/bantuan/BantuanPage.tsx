@@ -90,7 +90,7 @@ export function BantuanPage({ onShowTour }: BantuanPageProps) {
         <Guide title="Membuat LPLPO (laporan & permintaan ke farmasi)">
           <ol className="guide-steps">
             <li>
-              Di <b>Beranda</b>, tekan <b>Buat LPLPO</b>.
+              Tekan menu <b>LPLPO</b> (di bawah layar HP, atau di kiri layar komputer).
             </li>
             <li>Pilih bulan yang dilaporkan (biasanya bulan lalu).</li>
             <li>

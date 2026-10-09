@@ -48,7 +48,7 @@ const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] 
   { page: "beranda", label: "Beranda", icon: "home" },
   { page: "stok", label: "Stok", icon: "package" },
   { page: "riwayat", label: "Riwayat", icon: "clock" },
-  { page: "bantuan", label: "Bantuan", icon: "help" },
+  { page: "lplpo", label: "LPLPO", icon: "printer" },
   { page: "pengaturan", label: "Pengaturan", icon: "settings", adminOnly: true },
 ];
 
@@ -56,8 +56,6 @@ const NAV: { page: Page; label: string; icon: IconName; adminOnly?: boolean }[] 
 export default function App({ profile, moved = false }: { profile: UserProfile; moved?: boolean }) {
   const { items, allItems, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("beranda");
-  /** Halaman tujuan tombol "Kembali" di LPLPO: tempat LPLPO dibuka. */
-  const [lplpoBack, setLplpoBack] = useState<Page>("beranda");
   const [stokFilter, setStokFilter] = useState<StockFilter>("semua");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -206,7 +204,6 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
   }
 
   function openLplpo() {
-    setLplpoBack(page);
     setModal(null);
     setPage("lplpo");
   }
@@ -240,6 +237,14 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
         right={
           <>
             <SyncBadge status={syncStatus} />
+            {/* Bantuan di bar atas supaya selalu terlihat tanpa menambah tombol di menu bawah */}
+            <button
+              className={`btn btn-ghost btn-sm header-help${page === "bantuan" ? " active" : ""}`}
+              aria-current={page === "bantuan" ? "page" : undefined}
+              onClick={() => setPage("bantuan")}
+            >
+              <Icon type="help" size={18} /> Bantuan
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={() => setModal({ kind: "font" })}>
               Aa <span className="user-name">Ukuran huruf</span>
             </button>
@@ -283,7 +288,6 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onShowStock={showStock}
               onShowHistory={() => setPage("riwayat")}
               onExport={openExport}
-              onLplpo={openLplpo}
               onAddItem={isAdmin ? openAddItem : undefined}
               backupReminder={
                 isAdmin && backupMeta !== undefined && backupDue(backupMeta?.lastBackupAt ?? null)
@@ -336,7 +340,6 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               transactions={transactions}
               isAdmin={isAdmin}
               onSaveSigners={handleSaveSigners}
-              onBack={() => setPage(lplpoBack)}
             />
           )}
           {page === "kosongkan" && isAdmin && (
@@ -366,7 +369,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
       </div>
 
       <nav className="mobile-nav" aria-label="Menu utama">
-        <div className="mobile-nav-inner">
+        <div className={`mobile-nav-inner${nav.length > 4 ? " many" : ""}`}>
           {nav.map((n) => (
             <button
               key={n.page}

@@ -103,6 +103,9 @@ strong {
   font-weight: 700;
   line-height: 1.2;
 }
+.nowrap {
+  white-space: nowrap;
+}
 .header-sub {
   font-size: 0.8rem;
   color: var(--text3);
@@ -139,6 +142,11 @@ strong {
   color: var(--blue);
 }
 
+.header-help.active {
+  background: var(--primary-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
 .user-chip {
   display: flex;
   align-items: center;
@@ -1171,7 +1179,9 @@ select:focus {
   justify-content: space-around;
 }
 .mobile-nav-btn {
-  flex: 1;
+  /* Lebar mengikuti panjang tulisan, sisa ruang dibagi rata, supaya label panjang ("Pengaturan") tetap muat */
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1179,14 +1189,19 @@ select:focus {
   background: none;
   border: none;
   color: var(--text2);
-  font-size: 0.85rem;
+  /* Ikut "Ukuran huruf", tetapi dibatasi lebar layar supaya semua menu muat di HP kecil */
+  font-size: min(0.85rem, 5vw);
   font-weight: 600;
   min-height: 3.6rem;
-  padding: 0.35rem 0.25rem;
+  padding: 0.35rem 0.1rem;
   cursor: pointer;
 }
 .mobile-nav-btn.active {
   color: var(--primary);
+}
+/* Menu admin (5 tombol, ada "Pengaturan") butuh batas lebih kecil supaya tetap satu baris */
+.mobile-nav-inner.many .mobile-nav-btn {
+  font-size: min(0.85rem, 4.6vw);
 }
 
 @media (max-width: 900px) {
