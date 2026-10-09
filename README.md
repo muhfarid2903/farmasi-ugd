@@ -109,6 +109,7 @@ sebagai PDF).
 - Usulan permintaan = pemakaian + stok minimum − sisa stok (tidak kurang dari 0). Petugas bisa mengubahnya;
   isiannya disimpan di HP per bulan, tidak di database.
 - Kolom Pemberian (10–15) dikosongkan untuk diisi farmasi.
+- Barang yang sudah dihapus dari aplikasi tidak dicetak, kecuali bulan itu ada barang masuk/keluarnya.
 - Penanda tangan (jabatan, nama, NIP) disimpan admin di dokumen `meta/lplpo`, bukan di kode, karena repo
   ini publik.
 

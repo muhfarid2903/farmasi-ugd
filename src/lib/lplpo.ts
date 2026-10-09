@@ -69,10 +69,14 @@ const CATEGORY_ORDER = new Map<string, number>(CATEGORIES.map((c, i) => [c, i]))
  * Bila selisih kurang lebih besar dari stok awal (barang yang baru diterima bulan itu ternyata kurang),
  * kelebihannya dihitung sebagai pemakaian supaya stok awal tidak minus.
  * Hitungan selalu seimbang: 6 = 4 + 5, dan 8 = 6 − 7 = stok akhir bulan di aplikasi.
+ *
+ * Barang yang sudah dihapus dari aplikasi hanya ikut bila bulan itu ada barang masuk/keluar sungguhan
+ * (bukan sekadar penyesuaian), supaya pemakaian nyata tetap terlapor tanpa memunculkan sisa angka lama.
  */
 export function lplpoRows(allItems: Item[], transactions: Transaction[], month: string, today: string): LplpoRow[] {
   const byId = new Map(allItems.map((i) => [i.id, i]));
   return monthlyRecap(allItems, transactions, month)
+    .filter((r) => byId.has(r.itemId) || r.masuk > 0 || r.keluar > 0)
     .map((r): LplpoRow => {
       const item = byId.get(r.itemId);
       const awal = r.start + r.adjust;

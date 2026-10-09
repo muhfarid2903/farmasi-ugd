@@ -96,6 +96,21 @@ describe("lplpoRows", () => {
     expect(rows[0]).toMatchObject({ stokAwal: 0, penerimaan: 5, pemakaian: 0, sisa: 5, selisih: 0, ket: "" });
   });
 
+  it("barang yang sudah dihapus hanya ikut bila bulan itu ada barang masuk/keluar sungguhan", () => {
+    // x dan y sudah dihapus. Oktober: stok keduanya dikosongkan (opname) sebelum dihapus.
+    const txs = [
+      tx("x", "keluar", 15, "2026-10-06", { adjust: "opname" }),
+      tx("y", "keluar", 2, "2026-09-10"),
+      tx("y", "keluar", 3, "2026-10-06", { adjust: "opname" }),
+    ];
+    const sept = lplpoRows([], txs, "2026-09", TODAY);
+    // x hanya punya sisa angka lama (15) tanpa pergerakan September → tidak dicetak
+    expect(sept.map((r) => r.itemId)).toEqual(["y"]);
+    expect(sept[0]).toMatchObject({ name: "Item y (sudah dihapus)", stokAwal: 5, pemakaian: 2, sisa: 3 });
+    // Oktober hanya ada pengosongan (penyesuaian), bukan pemakaian → keduanya tidak dicetak
+    expect(lplpoRows([], txs, "2026-10", TODAY)).toEqual([]);
+  });
+
   it("urut per jenis (Obat, Alat Medis, Cairan Infus, ...) lalu nama, angka urut sebagai angka", () => {
     const mk = (id: string, name: string, category: Category) => item(id, 1, { name, category });
     const rows = lplpoRows(
