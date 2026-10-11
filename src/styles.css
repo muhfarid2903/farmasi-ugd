@@ -2013,3 +2013,141 @@ select:focus {
   margin-left: 8%;
   margin-right: 8%;
 }
+
+/* ---------- Asisten Stok Opname: percakapan PJ UGD dengan bot ---------- */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 50rem;
+}
+.chat-msg {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow-wrap: anywhere;
+}
+.chat-msg p + p,
+.chat-msg p + .chat-options {
+  margin-top: 0.5rem;
+}
+.chat-bot {
+  align-self: flex-start;
+  width: 100%;
+  border-top-left-radius: 4px;
+}
+.chat-me {
+  align-self: flex-end;
+  max-width: 85%;
+  background: var(--primary-bg);
+  border-color: #c4d3e6;
+  border-top-right-radius: 4px;
+  font-weight: 600;
+}
+.chat-msg.ok {
+  background: var(--green-bg);
+  border-color: #a7dcb9;
+}
+.chat-msg.warn {
+  background: var(--orange-bg);
+  border-color: #f2c48d;
+}
+.chat-msg.error {
+  background: var(--red-bg);
+  border-color: #f3b1b1;
+}
+.chat-current {
+  border: 2px solid var(--primary);
+}
+.chat-who {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text3);
+  margin-bottom: 0.3rem;
+}
+.chat-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.chat-options .btn {
+  justify-content: flex-start;
+  text-align: left;
+}
+.chat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+.chat-hint {
+  font-weight: 400;
+  opacity: 0.85;
+}
+.chat-list {
+  margin: 0.4rem 0 0.4rem 1.3rem;
+}
+.chat-list li {
+  margin: 0.2rem 0;
+}
+.chat-box {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: var(--surface2);
+}
+.chat-box.warn {
+  background: var(--orange-bg);
+  color: var(--text);
+}
+.chat-box p + p {
+  margin-top: 0.4rem;
+}
+.chat-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-check input {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.chat-ref {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+}
+.chat-big {
+  font-size: 1.35rem;
+  color: var(--primary);
+}
+.chat-field {
+  margin-top: 0.75rem;
+}
+.chat-search {
+  margin-top: 0.75rem;
+}
+.chat-month {
+  width: auto;
+}
+.chat-more {
+  margin-top: 0.5rem;
+}
+.chat-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.chat .spinner {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-width: 3px;
+  display: inline-block;
+  vertical-align: middle;
+}

@@ -14,6 +14,7 @@ interface PengaturanPageProps {
   onKosongkan: () => void;
   onGabung: () => void;
   onLplpo: () => void;
+  onAsisten: () => void;
   notify: (text: string, kind: "success" | "error") => void;
 }
 
@@ -29,6 +30,7 @@ export function PengaturanPage({
   onKosongkan,
   onGabung,
   onLplpo,
+  onAsisten,
   notify,
 }: PengaturanPageProps) {
   return (
@@ -105,6 +107,19 @@ export function PengaturanPage({
             </button>
             <button className="btn btn-ghost" onClick={onExport}>
               <Icon type="download" size={18} /> Unduh Laporan
+            </button>
+          </div>
+        </div>
+        <div className="settings-card">
+          <Icon type="check" size={28} />
+          <div className="settings-card-title">Asisten Stok Opname</div>
+          <p className="settings-card-text">
+            Isi kolom <b>UGD</b> di file stok opname puskesmas dari stok akhir bulan. Bot mencocokkan barang dan
+            menyiapkan kolomnya; Anda tinggal menempel.
+          </p>
+          <div className="settings-card-actions">
+            <button className="btn btn-primary" onClick={onAsisten}>
+              Buka Asisten
             </button>
           </div>
         </div>

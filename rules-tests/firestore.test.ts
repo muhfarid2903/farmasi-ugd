@@ -295,6 +295,58 @@ describe("penanda tangan LPLPO", () => {
   });
 });
 
+describe("asisten stok opname", () => {
+  const FILE_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz012345";
+  const file = (by: string, extra: Record<string, unknown> = {}) => ({
+    fileId: FILE_ID,
+    link: `https://docs.google.com/spreadsheets/d/${FILE_ID}/edit`,
+    driveKey: "kunci-uji",
+    by,
+    updatedAt: "2026-10-11T01:00:00Z",
+    ...extra,
+  });
+  it("admin boleh menyimpan alamat file dan kunci atas namanya sendiri; kunci boleh kosong", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "stokOpname"), file(ADMIN)));
+    const { driveKey: _driveKey, ...tanpaKunci } = file(ADMIN);
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "stokOpname"), tanpaKunci));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "stokOpname"), file(ANI)));
+  });
+  it("petugas tidak boleh membaca atau mengubah (kunci Drive hanya untuk admin)", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "stokOpname"), file(ADMIN)));
+    await assertSucceeds(getDoc(doc(as(ADMIN), "meta", "stokOpname")));
+    await assertFails(getDoc(doc(as(ANI), "meta", "stokOpname")));
+    await assertFails(setDoc(doc(as(ANI), "meta", "stokOpname"), file(ANI)));
+  });
+  it("id file tidak sah, kolom tak dikenal, atau penghapusan ditolak", async () => {
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "stokOpname"), file(ADMIN, { fileId: "bukan id" })));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "stokOpname"), file(ADMIN, { x: 1 })));
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "stokOpname"), file(ADMIN)));
+    await assertFails(deleteDoc(doc(as(ADMIN), "meta", "stokOpname")));
+  });
+
+  const jawaban = (by: string, map: unknown = { epi: { nama: ["Epinefrin (adrenalin) inj 1 mg/ml"] } }) => ({
+    map,
+    by,
+    updatedAt: "2026-10-11T01:00:00Z",
+  });
+  it("admin boleh menyimpan padanan, juga sebagian (gabung per barang)", async () => {
+    const db = as(ADMIN);
+    await assertSucceeds(setDoc(doc(db, "meta", "padananStokOpname"), jawaban(ADMIN)));
+    await assertSucceeds(
+      setDoc(doc(db, "meta", "padananStokOpname"), jawaban(ADMIN, { rl: { lewati: true } }), {
+        mergeFields: ["map.rl", "by", "updatedAt"],
+      }),
+    );
+    await assertFails(setDoc(doc(db, "meta", "padananStokOpname"), jawaban(ANI)));
+  });
+  it("petugas tidak boleh membaca atau mengubah padanan; isi selain daftar ditolak", async () => {
+    await assertSucceeds(setDoc(doc(as(ADMIN), "meta", "padananStokOpname"), jawaban(ADMIN)));
+    await assertFails(getDoc(doc(as(ANI), "meta", "padananStokOpname")));
+    await assertFails(setDoc(doc(as(ANI), "meta", "padananStokOpname"), jawaban(ANI)));
+    await assertFails(setDoc(doc(as(ADMIN), "meta", "padananStokOpname"), jawaban(ADMIN, "Epinefrin")));
+  });
+});
+
 describe("kelola item", () => {
   it("petugas tidak boleh menambah, mengubah, atau menghapus item", async () => {
     await assertFails(setDoc(doc(as(ANI), "items", "baru"), { name: "X", stock: 1 }));

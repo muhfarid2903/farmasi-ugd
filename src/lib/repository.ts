@@ -4,6 +4,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  FieldPath,
   getDocsFromServer,
   increment,
   onSnapshot,
@@ -21,6 +22,7 @@ import { todayStr } from "./date";
 import type { Signer } from "./lplpo";
 import type { MergeGroup, MergeUpdate } from "./merge";
 import { stockDelta, type TxData } from "./stock";
+import type { PadananMap } from "./stokOpname";
 
 const itemsCol = collection(db, "items");
 const txCol = collection(db, "transactions");
@@ -297,6 +299,51 @@ export function subscribeLplpoMeta(onData: (meta: LplpoMeta | null) => void): Un
 
 export function setLplpoSigners(signers: Signer[], by: string): Promise<void> {
   return setDoc(lplpoMetaRef, { signers, by, updatedAt: nowISO() });
+}
+
+/** File stok opname puskesmas untuk Asisten Stok Opname (khusus admin). */
+export interface StokOpnameMeta {
+  fileId: string;
+  link: string;
+  /** Kunci API Google Drive, dibatasi untuk Drive API dan alamat aplikasi. Tidak disimpan di kode. */
+  driveKey?: string;
+  by: string;
+  updatedAt: string;
+}
+
+const stokOpnameMetaRef = doc(db, "meta", "stokOpname");
+
+export function subscribeStokOpnameMeta(onData: (meta: StokOpnameMeta | null) => void): Unsubscribe {
+  return onSnapshot(
+    stokOpnameMetaRef,
+    (snap) => onData(snap.exists() ? (snap.data() as StokOpnameMeta) : null),
+    () => onData(null),
+  );
+}
+
+export function setStokOpnameMeta(file: { fileId: string; link: string; driveKey: string }, by: string): Promise<void> {
+  const { driveKey, ...rest } = file;
+  return setDoc(stokOpnameMetaRef, { ...rest, ...(driveKey ? { driveKey } : {}), by, updatedAt: nowISO() });
+}
+
+/** Padanan nama barang aplikasi ↔ baris di file stok opname, per barang (khusus admin). */
+const padananRef = doc(db, "meta", "padananStokOpname");
+
+export function subscribePadanan(onData: (map: PadananMap) => void): Unsubscribe {
+  return onSnapshot(
+    padananRef,
+    (snap) => onData((snap.exists() ? (snap.data().map as PadananMap | undefined) : undefined) ?? {}),
+    () => onData({}),
+  );
+}
+
+/** Simpan jawaban PJ UGD. Isian tiap barang diganti utuh; barang lain tidak tersentuh. */
+export function savePadanan(entries: PadananMap, by: string): Promise<void> {
+  return setDoc(
+    padananRef,
+    { map: entries, by, updatedAt: nowISO() },
+    { mergeFields: [...Object.keys(entries).map((id) => new FieldPath("map", id)), "by", "updatedAt"] },
+  );
 }
 
 /** Terapkan perubahan tanda darurat dan perbaikan satuan sekaligus (khusus admin). */

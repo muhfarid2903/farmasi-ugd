@@ -4,6 +4,7 @@ import { Header } from "./components/Header";
 import { Icon, type IconName } from "./components/Icon";
 import { SyncBadge } from "./components/SyncBadge";
 import { Toast, type ToastMessage } from "./components/Toast";
+import { AsistenPage } from "./features/asisten/AsistenPage";
 import { BerandaPage } from "./features/beranda/BerandaPage";
 import { DaruratPage } from "./features/darurat/DaruratPage";
 import { ExportModal } from "./features/laporan/ExportModal";
@@ -330,7 +331,18 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onKosongkan={() => setPage("kosongkan")}
               onGabung={() => setPage("gabung")}
               onLplpo={openLplpo}
+              onAsisten={() => setPage("asisten")}
               notify={notify}
+            />
+          )}
+          {page === "asisten" && isAdmin && (
+            <AsistenPage
+              allItems={allItems}
+              transactions={transactions}
+              profile={profile}
+              save={(promise, success) => (success ? write(promise, success) : void reportFailure(promise))}
+              notify={notify}
+              onBack={() => setPage("pengaturan")}
             />
           )}
           {page === "lplpo" && (

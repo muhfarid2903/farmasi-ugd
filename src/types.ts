@@ -103,7 +103,17 @@ export interface UserProfile {
 }
 
 export type Page =
-  "beranda" | "stok" | "riwayat" | "bantuan" | "pengaturan" | "opname" | "darurat" | "kosongkan" | "gabung" | "lplpo";
+  | "beranda"
+  | "stok"
+  | "riwayat"
+  | "bantuan"
+  | "pengaturan"
+  | "opname"
+  | "darurat"
+  | "kosongkan"
+  | "gabung"
+  | "lplpo"
+  | "asisten";
 
 /** online = tersambung; pending = ada perubahan lokal belum terkirim; offline = memakai cache lokal. */
 export type SyncStatus = "loading" | "online" | "pending" | "offline";

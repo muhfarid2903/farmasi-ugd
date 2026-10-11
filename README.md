@@ -50,12 +50,16 @@ src/
     transaksi/   riwayat, form barang masuk/keluar
     laporan/     ekspor rekap CSV
     lplpo/       LPLPO siap cetak (laporan pemakaian & permintaan ke farmasi)
+    asisten/     Asisten Stok Opname: isi kolom UGD di file stok opname puskesmas
   components/    komponen umum (Modal, Icon, Header, ...)
   hooks/         useInventory: data real-time + status sinkron
   lib/
     stock.ts       logika stok & validasi (fungsi murni, diuji)
     repository.ts  semua baca/tulis Firestore
     firebase.ts    inisialisasi Firebase + cache offline
+    stokOpname.ts  pencocokan barang ↔ file stok opname, kolom tempel, pemeriksaan (diuji)
+    xlsx.ts        pembaca file Excel tanpa pustaka tambahan
+    drive.ts       ambil file dari Google Drive dengan kunci API
     csv.ts, date.ts
 tests/           tes Vitest
 scripts/         seed data awal
@@ -113,11 +117,32 @@ sebagai PDF).
 - Penanda tangan (jabatan, nama, NIP) disimpan admin di dokumen `meta/lplpo`, bukan di kode, karena repo
   ini publik.
 
+## Asisten Stok Opname (kolom UGD di file stok opname puskesmas)
+
+Menu **Pengaturan → Asisten Stok Opname** (khusus admin) membantu PJ UGD mengisi kolom UGD di file stok
+opname puskesmas: file Excel di Google Drive milik farmasi yang diisi banyak petugas.
+
+- Angkanya stok akhir bulan dari rekap aplikasi, sama dengan LPLPO.
+- Bot tidak pernah menulis ke file itu. Bot membaca file (diambil dari Drive, atau diunggah), mencocokkan
+  barang lewat nama, lalu menyiapkan satu kolom siap tempel. PJ UGD menempelkannya mulai sel UGD baris barang
+  pertama, lalu bot membaca ulang file dan memeriksa hasilnya.
+- Tab, kolom, dan baris dicari lewat judul dan nama, karena posisinya berubah tiap bulan. Nama yang ragu
+  ditanyakan sekali; jawabannya (padanan) disimpan per barang di `meta/padananStokOpname`.
+- Link file dan kunci Drive API disimpan admin di `meta/stokOpname`, bukan di kode. Kunci dibatasi untuk
+  Google Drive API dan alamat aplikasi, dan hanya bisa membaca file yang dibagikan "siapa saja yang memiliki
+  link".
+- Tabel Excel tepat di sebelah kolom UGD ikut melebar saat kolom ditempel dan menulis judul "Kolom N";
+  bot memperingatkannya sebelum dan sesudah menempel.
+
 ## Deploy
 
 Setiap push ke `main` otomatis dicek (typecheck, lint, format, tes), di-build, lalu diterbitkan ke
 GitHub Pages. Kode yang gagal dicek tidak akan terbit. Di pengaturan repo, **Settings → Pages → Source**
 harus diset ke **GitHub Actions**.
+
+Repo ini harus tetap **publik**: di paket GitHub gratis, Pages hanya menerbitkan repo publik. Bila repo
+dijadikan private, situsnya berhenti (404), walau HP yang sudah memasang aplikasi masih bisa membukanya
+dari simpanan.
 
 ## Catatan desain
 

@@ -89,6 +89,29 @@ service cloud.firestore {
         && request.resource.data.by == email();
     }
 
+    // Asisten Stok Opname: alamat file stok opname puskesmas dan kunci Drive API (khusus admin)
+    match /meta/stokOpname {
+      allow read: if isAdmin();
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasOnly(['fileId', 'link', 'driveKey', 'by', 'updatedAt'])
+        && request.resource.data.fileId is string && request.resource.data.fileId.matches('^[A-Za-z0-9_-]{20,}$')
+        && request.resource.data.link is string && request.resource.data.link.size() <= 500
+        && (!('driveKey' in request.resource.data)
+            || (request.resource.data.driveKey is string && request.resource.data.driveKey.size() <= 100))
+        && request.resource.data.updatedAt is string
+        && request.resource.data.by == email();
+    }
+
+    // Asisten Stok Opname: padanan nama barang aplikasi ↔ baris di file stok opname (khusus admin)
+    match /meta/padananStokOpname {
+      allow read: if isAdmin();
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasOnly(['map', 'by', 'updatedAt'])
+        && request.resource.data.map is map
+        && request.resource.data.updatedAt is string
+        && request.resource.data.by == email();
+    }
+
     // Riwayat stok opname: dibuat admin, tidak bisa diubah atau dihapus
     match /opname/{opnameId} {
       allow read: if isStaff();
