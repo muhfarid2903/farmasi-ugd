@@ -21,7 +21,8 @@ import { db } from "./firebase";
 import { todayStr } from "./date";
 import type { Signer } from "./lplpo";
 import type { MergeGroup, MergeUpdate } from "./merge";
-import { stockDelta, type TxData } from "./stock";
+import type { HitungUlangPlan } from "./hitungUlang";
+import { stockDelta, voidTxData, type TxData } from "./stock";
 import type { PadananMap } from "./stokOpname";
 
 const itemsCol = collection(db, "items");
@@ -227,6 +228,70 @@ export async function saveOpname(entries: OpnameEntry[], items: Item[], by: Acto
     commits.push(b.commit());
   }
   await Promise.all(commits);
+}
+
+/**
+ * "Jadikan hitung fisik" sebagai langkah-langkah penulisan yang dijalankan berurutan (masing-masing ditunggu),
+ * supaya bila satu langkah gagal, langkah berikutnya tidak ikut jalan dan bisa diulang dari langkah itu.
+ * Pembatalan didahulukan: bila terhenti di tengah, stok tercatat lebih kecil dari fisik, bukan lebih besar.
+ * Langkah terakhir mencatat dokumen opname beserta penyesuaiannya (stok kembali seperti sebelum alat dipakai).
+ * Tiap langkah paling banyak 450 penulisan (batas batch 500).
+ */
+export function hitungUlangSteps(plan: HitungUlangPlan, date: string, by: Actor): (() => Promise<void>)[] {
+  const today = todayStr();
+  const chunks = <T>(list: T[], size: number) =>
+    Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, (i + 1) * size));
+
+  const steps = plan.voidRounds.flatMap((round) =>
+    chunks(round, 150).map((part) => async () => {
+      const b = writeBatch(db);
+      for (const orig of part) {
+        const txRef = doc(txCol);
+        b.set(txRef, { ...voidTxData(orig, by, today, "dicatat ulang sebagai hitung fisik"), createdAt: nowISO() });
+        b.update(doc(itemsCol, orig.itemId), { stock: increment(-orig.qty), lastTxId: txRef.id });
+        b.update(doc(txCol, orig.id), { voidedBy: txRef.id });
+      }
+      await b.commit();
+    }),
+  );
+
+  // Dokumen opname ikut di bagian pertama; aturan keamanan memeriksa dokumen itu ada untuk tiap penyesuaian
+  const opnameRef = doc(opnameCol);
+  chunks(plan.entries, 200).forEach((part, i) =>
+    steps.push(async () => {
+      const b = writeBatch(db);
+      if (i === 0) {
+        b.set(opnameRef, {
+          date: today,
+          operator: by.name,
+          email: by.email,
+          note: `Hitung ulang ${date}: catatan barang masuk dijadikan hitung fisik`,
+          entries: plan.entries,
+          createdAt: nowISO(),
+        });
+      }
+      for (const e of part) {
+        const txRef = doc(txCol);
+        const qty = e.counted - e.system;
+        b.set(txRef, {
+          itemId: e.itemId,
+          itemName: e.itemName,
+          type: "masuk",
+          qty,
+          date: today,
+          note: `Stok opname: hitung fisik ${e.counted}, catatan ${e.system}`,
+          operator: by.name,
+          email: by.email,
+          adjust: "opname",
+          opnameId: opnameRef.id,
+          createdAt: nowISO(),
+        });
+        b.update(doc(itemsCol, e.itemId), { stock: increment(qty), lastTxId: txRef.id });
+      }
+      await b.commit();
+    }),
+  );
+  return steps;
 }
 
 export function subscribeOpnames(onData: (list: Opname[]) => void, onError: (e: Error) => void): Unsubscribe {

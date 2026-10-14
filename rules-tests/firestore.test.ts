@@ -248,6 +248,31 @@ describe("stok opname & koreksi", () => {
     await assertSucceeds(opnameBatch(as(ADMIN), ADMIN));
     await assertSucceeds(getDoc(doc(as(ANI), "opname", "o1")));
   });
+
+  describe("jadikan hitung fisik", () => {
+    const voidAni = txBase(ADMIN, { type: "keluar", qty: 4, voidsTxId: "t-ani" });
+    const adjust = txBase(ADMIN, { type: "masuk", qty: 4, adjust: "opname", opnameId: "o1" });
+
+    it("admin membatalkan catatan masuk petugas, lalu mencatatnya ulang sebagai opname", async () => {
+      const db = as(ADMIN);
+      await assertSucceeds(txBatch(db, "v1", voidAni, -4));
+      const b = writeBatch(db);
+      b.set(doc(db, "opname", "o1"), opnameDoc(ADMIN));
+      b.set(doc(db, "transactions", "a1"), adjust);
+      b.update(doc(db, "items", "epi"), { stock: increment(4), lastTxId: "a1" });
+      await assertSucceeds(b.commit());
+    });
+    it("pembatalan dan penyesuaian barang yang sama dalam satu batch ditolak (makanya ditulis bertahap)", async () => {
+      const db = as(ADMIN);
+      const b = writeBatch(db);
+      b.set(doc(db, "transactions", "v1"), voidAni);
+      b.update(doc(db, "transactions", "t-ani"), { voidedBy: "v1" });
+      b.set(doc(db, "opname", "o1"), opnameDoc(ADMIN));
+      b.set(doc(db, "transactions", "a1"), adjust);
+      b.update(doc(db, "items", "epi"), { stock: increment(0), lastTxId: "a1" });
+      await assertFails(b.commit());
+    });
+  });
 });
 
 describe("keterangan cadangan", () => {

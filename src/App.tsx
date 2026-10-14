@@ -9,6 +9,7 @@ import { BerandaPage } from "./features/beranda/BerandaPage";
 import { DaruratPage } from "./features/darurat/DaruratPage";
 import { ExportModal } from "./features/laporan/ExportModal";
 import { GabungPage } from "./features/gabung/GabungPage";
+import { HitungUlangPage } from "./features/opname/HitungUlangPage";
 import { KosongkanPage } from "./features/opname/KosongkanPage";
 import { LplpoPage } from "./features/lplpo/LplpoPage";
 import { OpnamePage } from "./features/opname/OpnamePage";
@@ -330,6 +331,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onDarurat={() => setPage("darurat")}
               onKosongkan={() => setPage("kosongkan")}
               onGabung={() => setPage("gabung")}
+              onHitungUlang={() => setPage("hitungUlang")}
               onLplpo={openLplpo}
               onAsisten={() => setPage("asisten")}
               notify={notify}
@@ -371,6 +373,17 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               items={items}
               onMerge={handleMerge}
               onBackup={() => setPage("pengaturan")}
+              onBack={() => setPage("pengaturan")}
+            />
+          )}
+          {page === "hitungUlang" && isAdmin && (
+            <HitungUlangPage
+              items={items}
+              transactions={transactions}
+              today={todayStr()}
+              online={syncStatus === "online"}
+              makeSteps={(plan, date) => repo.hitungUlangSteps(plan, date, profile)}
+              onLplpo={openLplpo}
               onBack={() => setPage("pengaturan")}
             />
           )}

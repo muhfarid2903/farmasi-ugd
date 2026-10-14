@@ -13,6 +13,7 @@ interface PengaturanPageProps {
   onDarurat: () => void;
   onKosongkan: () => void;
   onGabung: () => void;
+  onHitungUlang: () => void;
   onLplpo: () => void;
   onAsisten: () => void;
   notify: (text: string, kind: "success" | "error") => void;
@@ -29,6 +30,7 @@ export function PengaturanPage({
   onDarurat,
   onKosongkan,
   onGabung,
+  onHitungUlang,
   onLplpo,
   onAsisten,
   notify,
@@ -91,6 +93,19 @@ export function PengaturanPage({
           <div className="settings-card-actions">
             <button className="btn btn-primary" onClick={onOpname}>
               Mulai Stok Opname
+            </button>
+          </div>
+        </div>
+        <div className="settings-card">
+          <Icon type="undo" size={28} />
+          <div className="settings-card-title">Jadikan Hitung Fisik</div>
+          <p className="settings-card-text">
+            Hitung ulang stok terlanjur dicatat sebagai <b>Barang Masuk</b>? Ubah jadi stok opname supaya LPLPO tidak
+            menghitungnya sebagai penerimaan dari farmasi. Stok tidak berubah.
+          </p>
+          <div className="settings-card-actions">
+            <button className="btn btn-primary" onClick={onHitungUlang}>
+              Buka Jadikan Hitung Fisik
             </button>
           </div>
         </div>

@@ -112,6 +112,7 @@ export type Page =
   | "darurat"
   | "kosongkan"
   | "gabung"
+  | "hitungUlang"
   | "lplpo"
   | "asisten";
 

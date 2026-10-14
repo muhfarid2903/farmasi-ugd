@@ -1860,6 +1860,25 @@ select:focus {
 .lplpo-add {
   margin-top: 0.75rem;
 }
+.hitung-ulang-date {
+  max-width: 20rem;
+}
+.hitung-ulang-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.kritis-toggle.pick-toggle.active {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+}
+.pick-toggle .kritis-check.checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.hitung-ulang-pick {
+  margin: 0.75rem 0 1rem;
+}
 .btn-link + .lplpo-remove {
   margin-left: 1.25rem;
 }
