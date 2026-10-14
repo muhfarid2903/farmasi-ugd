@@ -1860,6 +1860,15 @@ select:focus {
 .lplpo-add {
   margin-top: 0.75rem;
 }
+.btn-link + .lplpo-remove {
+  margin-left: 1.25rem;
+}
+.lplpo-removed {
+  margin-top: 0.75rem;
+}
+.lplpo-removed .review-line {
+  align-items: center;
+}
 .lplpo-add-list {
   max-height: 22rem;
   overflow-y: auto;

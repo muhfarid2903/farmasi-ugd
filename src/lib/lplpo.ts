@@ -115,8 +115,16 @@ export function permintaanValue(row: Pick<LplpoRow, "usulan">, raw: string | und
   return parseCount(raw);
 }
 
-/** Baris yang dicetak: punya stok, pergerakan, atau selisih bulan itu; diusulkan diminta; atau ditambahkan petugas. */
-export function isPrinted(row: LplpoRow, added: ReadonlySet<string>): boolean {
+/**
+ * Baris yang dicetak: punya stok, pergerakan, atau selisih bulan itu; diusulkan diminta; atau ditambahkan petugas.
+ * Barang yang dihapus petugas dari daftar tidak dicetak.
+ */
+export function isPrinted(
+  row: LplpoRow,
+  added: ReadonlySet<string>,
+  removed: ReadonlySet<string> = new Set(),
+): boolean {
+  if (removed.has(row.itemId)) return false;
   return (
     added.has(row.itemId) ||
     row.stokAwal !== 0 ||

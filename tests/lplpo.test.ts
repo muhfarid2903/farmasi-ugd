@@ -175,6 +175,11 @@ describe("isPrinted", () => {
     expect(isPrinted(byId.get("kosong")!, new Set())).toBe(false);
     expect(isPrinted(byId.get("kosong")!, new Set(["kosong"]))).toBe(true);
   });
+  it("barang yang dihapus petugas tidak dicetak, walaupun punya stok atau diusulkan diminta", () => {
+    const removed = new Set(["ada", "diminta"]);
+    expect(isPrinted(byId.get("ada")!, new Set(), removed)).toBe(false);
+    expect(isPrinted(byId.get("diminta")!, new Set(), removed)).toBe(false);
+  });
 });
 
 describe("permintaanValue", () => {

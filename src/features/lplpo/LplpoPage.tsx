@@ -27,11 +27,13 @@ interface Draft {
   permintaan: Record<string, string>;
   /** Barang yang ditambahkan petugas. */
   tambahan: string[];
+  /** Barang yang dihapus petugas dari daftar (tidak dicetak). */
+  dihapus: string[];
   umum: string;
   bpjs: string;
 }
 
-const EMPTY_DRAFT: Draft = { permintaan: {}, tambahan: [], umum: "", bpjs: "" };
+const EMPTY_DRAFT: Draft = { permintaan: {}, tambahan: [], dihapus: [], umum: "", bpjs: "" };
 const draftKey = (month: string) => `ugd.lplpo.${month}`;
 
 function loadDraft(month: string): Draft {
@@ -45,7 +47,11 @@ function loadDraft(month: string): Draft {
 function saveDraft(month: string, draft: Draft) {
   try {
     const empty =
-      Object.keys(draft.permintaan).length === 0 && draft.tambahan.length === 0 && !draft.umum && !draft.bpjs;
+      Object.keys(draft.permintaan).length === 0 &&
+      draft.tambahan.length === 0 &&
+      draft.dihapus.length === 0 &&
+      !draft.umum &&
+      !draft.bpjs;
     if (empty) localStorage.removeItem(draftKey(month));
     else localStorage.setItem(draftKey(month), JSON.stringify(draft));
   } catch {
@@ -94,7 +100,9 @@ export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigner
     [allItems, transactions, month, today],
   );
   const added = useMemo(() => new Set(draft.tambahan), [draft.tambahan]);
-  const rows = useMemo(() => allRows.filter((r) => isPrinted(r, added)), [allRows, added]);
+  const removed = useMemo(() => new Set(draft.dihapus), [draft.dihapus]);
+  const rows = useMemo(() => allRows.filter((r) => isPrinted(r, added, removed)), [allRows, added, removed]);
+  const removedRows = useMemo(() => allRows.filter((r) => removed.has(r.itemId)), [allRows, removed]);
   const values = useMemo(
     () => new Map(rows.map((r) => [r.itemId, permintaanValue(r, draft.permintaan[r.itemId])])),
     [rows, draft.permintaan],
@@ -143,13 +151,33 @@ export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigner
       return { ...d, permintaan };
     });
 
-  function removeAdded(itemId: string) {
+  /**
+   * Barang yang hanya ada karena ditambahkan cukup dikeluarkan dari tambahan. Barang yang dimasukkan aplikasi
+   * (tetap tercetak tanpa ditambahkan) dicatat sebagai dihapus, supaya bisa dikembalikan.
+   */
+  function removeRow(itemId: string) {
+    const row = allRows.find((r) => r.itemId === itemId);
+    const fromApp = !!row && isPrinted(row, new Set());
     setDraft((d) => {
       const permintaan = { ...d.permintaan };
       delete permintaan[itemId];
-      return { ...d, permintaan, tambahan: d.tambahan.filter((id) => id !== itemId) };
+      return {
+        ...d,
+        permintaan,
+        tambahan: d.tambahan.filter((id) => id !== itemId),
+        dihapus: fromApp && !d.dihapus.includes(itemId) ? [...d.dihapus, itemId] : d.dihapus,
+      };
     });
   }
+
+  const restoreRow = (itemId: string) => setDraft((d) => ({ ...d, dihapus: d.dihapus.filter((id) => id !== itemId) }));
+
+  const addRow = (itemId: string) =>
+    setDraft((d) => ({
+      ...d,
+      tambahan: [...d.tambahan, itemId],
+      dihapus: d.dihapus.filter((id) => id !== itemId),
+    }));
 
   function resetPermintaan() {
     if (window.confirm("Kembalikan semua angka permintaan ke usulan aplikasi?")) {
@@ -244,11 +272,9 @@ export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigner
                     Pakai usulan ({r.usulan})
                   </button>
                 )}
-                {added.has(r.itemId) && (
-                  <button className="btn-link" onClick={() => removeAdded(r.itemId)}>
-                    Hapus dari daftar
-                  </button>
-                )}
+                <button className="btn-link lplpo-remove" onClick={() => removeRow(r.itemId)}>
+                  Hapus dari daftar
+                </button>
               </div>
               <div className="opname-input">
                 <label className="form-hint" htmlFor={`lp-${r.itemId}`}>
@@ -271,6 +297,20 @@ export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigner
         {shown.length === 0 && <p className="text-faint">Tidak ada barang yang cocok.</p>}
       </div>
       <ShowMoreButton rest={rest} onClick={more} />
+      {removedRows.length > 0 && (
+        <div className="settings-card lplpo-removed">
+          <div className="settings-card-title">Dihapus dari daftar ({removedRows.length})</div>
+          <p className="form-hint">Barang ini tidak dicetak. Tekan Kembalikan bila salah hapus.</p>
+          {removedRows.map((r) => (
+            <div key={r.itemId} className="review-line">
+              <span>{r.name}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => restoreRow(r.itemId)}>
+                <Icon type="undo" size={16} /> Kembalikan
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <button className="btn btn-ghost lplpo-add" onClick={() => setModal("tambah")}>
         <Icon type="plus" size={18} /> Tambah barang lain
       </button>
@@ -359,13 +399,7 @@ export function LplpoPage({ items, allItems, transactions, isAdmin, onSaveSigner
         })}
       />
 
-      {modal === "tambah" && (
-        <AddItemModal
-          items={notListed}
-          onAdd={(id) => setDraft((d) => ({ ...d, tambahan: [...d.tambahan, id] }))}
-          onClose={() => setModal(null)}
-        />
-      )}
+      {modal === "tambah" && <AddItemModal items={notListed} onAdd={addRow} onClose={() => setModal(null)} />}
       {modal === "ttd" && (
         <SignersModal
           signers={signers}
