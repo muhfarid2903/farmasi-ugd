@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { defaultHitungUlangDate, hitungUlangCandidates, hitungUlangPlan } from "../src/lib/hitungUlang";
+import {
+  defaultHitungUlangDate,
+  hitungUlangCandidates,
+  hitungUlangPlan,
+  mergedTargetName,
+} from "../src/lib/hitungUlang";
 import { lplpoRows } from "../src/lib/lplpo";
 import type { Item, Transaction } from "../src/types";
 
@@ -80,5 +85,46 @@ describe("LPLPO sesudah dijadikan hitung fisik", () => {
     const row = lplpoRows(items, after, "2026-10", "2026-10-14")[0];
     expect(row).toMatchObject({ stokAwal: 17, penerimaan: 0, pemakaian: 0, sisa: 17, selisih: 11 });
     expect(row.ket).toBe("Selisih +11");
+  });
+});
+
+describe("barang yang sudah digabung", () => {
+  // Ringer Laktat (DAK) sudah digabung ke Ringer Laktat. Catatan lama tetap atas nama barang (DAK).
+  const items = [
+    item("rl", 11, { name: "Ringer Laktat" }),
+    item("rld", 0, { name: "Ringer Laktat (DAK)", mergedInto: "rl" }),
+  ];
+  const asli = tx("rld", "masuk", 5, "2026-10-05");
+  const coba = tx("rld", "masuk", 4, "2026-10-05", { id: "coba" });
+  const kosong = tx("rld", "keluar", 109, "2026-10-05", { adjust: "opname" });
+  const hitung = tx("rl", "masuk", 11, "2026-10-14", { adjust: "opname" });
+
+  it("catatannya ikut tampil, dengan nama barang tujuannya", () => {
+    expect(hitungUlangCandidates([asli, coba, kosong], items, "2026-10-05").map((t) => t.id)).toEqual([
+      asli.id,
+      "coba",
+    ]);
+    expect(mergedTargetName("rld", items)).toBe("Ringer Laktat");
+    expect(mergedTargetName("rl", items)).toBeNull();
+  });
+
+  it("dijadikan hitung fisik pada barang lama: stok tetap, penerimaan di LPLPO barang tujuan berkurang", () => {
+    const before = lplpoRows(items, [asli, coba, kosong, hitung], "2026-10", "2026-10-14").find(
+      (r) => r.itemId === "rl",
+    );
+    expect(before).toMatchObject({ stokAwal: 2, penerimaan: 9, sisa: 11 });
+
+    const [e] = hitungUlangPlan([coba], items).entries;
+    expect(e).toMatchObject({ itemId: "rld", system: -4, counted: 0 });
+    const after = [
+      asli,
+      { ...coba, voidedBy: "v" },
+      tx("rld", "keluar", 4, "2026-10-14", { id: "v", voidsTxId: "coba" }),
+      tx("rld", "masuk", e.counted - e.system, "2026-10-14", { adjust: "opname" }),
+      kosong,
+      hitung,
+    ];
+    const row = lplpoRows(items, after, "2026-10", "2026-10-14").find((r) => r.itemId === "rl");
+    expect(row).toMatchObject({ stokAwal: 6, penerimaan: 5, pemakaian: 0, sisa: 11 });
   });
 });

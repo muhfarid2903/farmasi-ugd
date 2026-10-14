@@ -1,4 +1,5 @@
 import type { Item, OpnameEntry, Transaction } from "../types";
+import { mergeAliases } from "./merge";
 
 /**
  * "Jadikan hitung fisik": hasil hitung ulang stok yang terlanjur dicatat sebagai barang masuk.
@@ -6,19 +7,18 @@ import type { Item, OpnameEntry, Transaction } from "../types";
  * sehingga stok tidak berubah tetapi LPLPO tidak lagi menghitungnya sebagai penerimaan dari farmasi.
  */
 
-/** Catatan barang masuk pada tanggal itu yang bisa dijadikan hitung fisik, urut waktu catat. */
-export function hitungUlangCandidates(transactions: Transaction[], items: Item[], date: string): Transaction[] {
-  const active = new Set(items.map((i) => i.id));
+/**
+ * Catatan barang masuk pada tanggal itu yang bisa dijadikan hitung fisik, urut waktu catat.
+ * `allItems` termasuk barang yang sudah digabung: catatannya tetap boleh diubah, karena pembatalan dan
+ * penyesuaiannya sama-sama dicatat pada barang lama itu (stoknya kembali seperti semula), sedangkan
+ * rekap dan LPLPO menghitungnya pada barang tujuan. Barang yang sudah dihapus dilewati.
+ */
+export function hitungUlangCandidates(transactions: Transaction[], allItems: Item[], date: string): Transaction[] {
+  const existing = new Set(allItems.map((i) => i.id));
   return transactions
     .filter(
       (t) =>
-        t.date === date &&
-        t.type === "masuk" &&
-        !t.adjust &&
-        !t.voidedBy &&
-        !t.voidsTxId &&
-        // Barang yang sudah digabung/dihapus: stoknya sudah pindah, jangan dibatalkan lagi
-        active.has(t.itemId),
+        t.date === date && t.type === "masuk" && !t.adjust && !t.voidedBy && !t.voidsTxId && existing.has(t.itemId),
     )
     .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
 }
@@ -40,6 +40,12 @@ export interface HitungUlangPlan {
   voidRounds: Transaction[][];
   /** Satu baris per barang untuk dokumen opname: `system` = stok tanpa catatan masuk itu, `counted` = stok sekarang. */
   entries: OpnameEntry[];
+}
+
+/** Nama barang tujuan bila barang ini sudah digabung, selain itu null. */
+export function mergedTargetName(itemId: string, allItems: Item[]): string | null {
+  const target = mergeAliases(allItems).get(itemId);
+  return target ? (allItems.find((i) => i.id === target)?.name ?? null) : null;
 }
 
 export function hitungUlangPlan(selected: Transaction[], items: Item[]): HitungUlangPlan {

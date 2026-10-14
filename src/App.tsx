@@ -387,7 +387,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
           )}
           {page === "hitungUlang" && isAdmin && (
             <HitungUlangPage
-              items={items}
+              allItems={allItems}
               transactions={transactions}
               today={todayStr()}
               online={syncStatus === "online"}

@@ -6,6 +6,7 @@ import {
   defaultHitungUlangDate,
   hitungUlangCandidates,
   hitungUlangPlan,
+  mergedTargetName,
   type HitungUlangPlan,
 } from "../../lib/hitungUlang";
 import type { Item, Transaction } from "../../types";
@@ -19,7 +20,8 @@ type RunState =
   | { kind: "done"; count: number };
 
 interface HitungUlangPageProps {
-  items: Item[];
+  /** Termasuk barang yang sudah digabung. */
+  allItems: Item[];
   transactions: Transaction[];
   today: string;
   /** Tersambung ke server tanpa catatan yang tertunda. */
@@ -42,7 +44,7 @@ function timeOf(iso: string | undefined): string {
  * Stok tidak berubah; di LPLPO angkanya pindah dari Penerimaan ke Stok Awal.
  */
 export function HitungUlangPage({
-  items,
+  allItems,
   transactions,
   today,
   online,
@@ -51,15 +53,15 @@ export function HitungUlangPage({
   onBack,
 }: HitungUlangPageProps) {
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [date, setDate] = useState(() => defaultHitungUlangDate(transactions, items, today));
+  const [date, setDate] = useState(() => defaultHitungUlangDate(transactions, allItems, today));
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState(false);
   const [run, setRun] = useState<RunState>({ kind: "idle" });
 
-  const candidates = useMemo(() => hitungUlangCandidates(transactions, items, date), [transactions, items, date]);
+  const candidates = useMemo(() => hitungUlangCandidates(transactions, allItems, date), [transactions, allItems, date]);
   const selected = candidates.filter((t) => !skipped.has(t.id));
   const itemCount = new Set(selected.map((t) => t.itemId)).size;
-  const unitOf = (id: string) => items.find((i) => i.id === id)?.unit ?? "";
+  const unitOf = (id: string) => allItems.find((i) => i.id === id)?.unit ?? "";
 
   function toggle(id: string) {
     setSkipped((s) => {
@@ -86,7 +88,7 @@ export function HitungUlangPage({
 
   function start() {
     setConfirm(false);
-    void runFrom(makeSteps(hitungUlangPlan(selected, items), date), 0, selected.length);
+    void runFrom(makeSteps(hitungUlangPlan(selected, allItems), date), 0, selected.length);
   }
 
   const back = (
@@ -206,6 +208,8 @@ export function HitungUlangPage({
                     <div className="kritis-sub">
                       Dicatat {t.operator}
                       {t.createdAt && `, ${timeOf(t.createdAt)}`}
+                      {mergedTargetName(t.itemId, allItems) &&
+                        ` · sudah digabung ke ${mergedTargetName(t.itemId, allItems)}`}
                     </div>
                   </div>
                 </button>
