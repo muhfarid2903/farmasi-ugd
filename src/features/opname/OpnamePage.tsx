@@ -21,10 +21,13 @@ function loadDraft(): Record<string, string> {
 interface OpnamePageProps {
   items: Item[];
   onSave: (entries: OpnameEntry[], note: string) => void;
+  /** Halaman asal (Stok untuk petugas, Pengaturan untuk admin). */
+  backLabel: string;
   onBack: () => void;
 }
 
-export function OpnamePage({ items, onSave, onBack }: OpnamePageProps) {
+/** Hitung fisik (stok opname): boleh untuk semua petugas; tiap simpanan tercatat atas nama petugasnya. */
+export function OpnamePage({ items, onSave, backLabel, onBack }: OpnamePageProps) {
   const [counts, setCounts] = useState<Record<string, string>>(loadDraft);
   const [scope, setScope] = useState<"darurat" | "semua" | string>("darurat");
   const [search, setSearch] = useState("");
@@ -76,12 +79,13 @@ export function OpnamePage({ items, onSave, onBack }: OpnamePageProps) {
   return (
     <>
       <button className="btn-link" onClick={onBack}>
-        ← Kembali ke Pengaturan
+        ← Kembali ke {backLabel}
       </button>
-      <h1 className="page-title">Stok Opname</h1>
+      <h1 className="page-title">Hitung Fisik (Stok Opname)</h1>
       <p className="page-sub">
         Hitung barang di rak, lalu isi jumlahnya. Hitungan tersimpan otomatis di HP ini, jadi boleh dicicil. Barang yang
-        tidak diisi tidak diubah. Selisihnya dicatat sebagai <b>penyesuaian opname</b> di riwayat.
+        tidak diisi tidak diubah. Selisihnya dicatat sebagai <b>penyesuaian opname</b> di riwayat, atas nama Anda. Pakai
+        halaman ini, bukan Barang Masuk, untuk menghitung ulang stok di lemari.
       </p>
 
       <div className="chips" role="group" aria-label="Barang yang dihitung">

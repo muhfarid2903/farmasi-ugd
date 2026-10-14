@@ -87,6 +87,19 @@ export function BantuanPage({ onShowTour }: BantuanPageProps) {
           </ol>
         </Guide>
 
+        <Guide title="Menghitung ulang stok di lemari (hitung fisik)">
+          <ol className="guide-steps">
+            <li>
+              Buka menu <b>Stok</b>, lalu tekan <b>Hitung Fisik</b>. <b>Jangan</b> lewat Barang Masuk.
+            </li>
+            <li>Hitung barang di lemari, lalu isi jumlahnya. Boleh dicicil; hitungan tersimpan di HP.</li>
+            <li>
+              Tekan <b>Periksa & simpan</b>, periksa selisihnya, lalu tekan <b>Simpan opname</b>.
+            </li>
+            <li>Stok di aplikasi disamakan dengan hitungan Anda dan tercatat atas nama Anda.</li>
+          </ol>
+        </Guide>
+
         <Guide title="Membuat LPLPO (laporan & permintaan ke farmasi)">
           <ol className="guide-steps">
             <li>

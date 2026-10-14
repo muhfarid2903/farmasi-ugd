@@ -59,6 +59,8 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
   const { items, allItems, transactions, loading, syncStatus, error } = useInventory();
   const [page, setPage] = useState<Page>("beranda");
   const [stokFilter, setStokFilter] = useState<StockFilter>("semua");
+  /** Asal halaman Hitung Fisik, untuk tombol kembali. */
+  const [opnameFrom, setOpnameFrom] = useState<"stok" | "pengaturan">("stok");
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [fontScale, setFontScale] = useFontScale();
@@ -159,6 +161,12 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
   function showStock(filter: StockFilter = "semua") {
     setStokFilter(filter);
     setPage("stok");
+  }
+
+  function openOpname(from: "stok" | "pengaturan") {
+    setModal(null);
+    setOpnameFrom(from);
+    setPage("opname");
   }
 
   function handleSaveOpname(entries: OpnameEntry[], note: string) {
@@ -307,6 +315,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onAddItem={openAddItem}
               onEditItem={(item) => setModal({ kind: "item", editItem: item })}
               onEditExpiry={(item) => setModal({ kind: "expiry", item })}
+              onHitungFisik={() => openOpname("stok")}
             />
           )}
           {page === "riwayat" && (
@@ -327,7 +336,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onAddItem={openAddItem}
               onShowStock={() => showStock()}
               onExport={openExport}
-              onOpname={() => setPage("opname")}
+              onOpname={() => openOpname("pengaturan")}
               onDarurat={() => setPage("darurat")}
               onKosongkan={() => setPage("kosongkan")}
               onGabung={() => setPage("gabung")}
@@ -361,7 +370,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               items={items}
               onConfirm={handleEmptyAll}
               onBackup={() => setPage("pengaturan")}
-              onOpname={() => setPage("opname")}
+              onOpname={() => openOpname("pengaturan")}
               onBack={() => setPage("pengaturan")}
             />
           )}
@@ -387,8 +396,13 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
               onBack={() => setPage("pengaturan")}
             />
           )}
-          {page === "opname" && isAdmin && (
-            <OpnamePage items={items} onSave={handleSaveOpname} onBack={() => setPage("pengaturan")} />
+          {page === "opname" && (
+            <OpnamePage
+              items={items}
+              onSave={handleSaveOpname}
+              backLabel={opnameFrom === "stok" ? "Stok" : "Pengaturan"}
+              onBack={() => (opnameFrom === "stok" ? showStock() : setPage("pengaturan"))}
+            />
           )}
         </main>
       </div>
@@ -416,6 +430,7 @@ export default function App({ profile, moved = false }: { profile: UserProfile; 
           operatorName={profile.name}
           onSave={handleWizardSave}
           onUndo={handleWizardUndo}
+          onHitungFisik={() => openOpname("stok")}
           onClose={closeModal}
         />
       )}

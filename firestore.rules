@@ -112,10 +112,10 @@ service cloud.firestore {
         && request.resource.data.by == email();
     }
 
-    // Riwayat stok opname: dibuat admin, tidak bisa diubah atau dihapus
+    // Riwayat stok opname (hitung fisik): dibuat petugas atas namanya sendiri, tidak bisa diubah atau dihapus
     match /opname/{opnameId} {
       allow read: if isStaff();
-      allow create: if isAdmin()
+      allow create: if isStaff()
         && request.resource.data.keys().hasOnly(['date', 'operator', 'email', 'note', 'entries', 'createdAt'])
         && request.resource.data.keys().hasAll(['date', 'operator', 'email', 'note', 'entries', 'createdAt'])
         && request.resource.data.email == email()
@@ -142,11 +142,12 @@ service cloud.firestore {
         && request.resource.data.createdAt is string
         && request.resource.data.email == email()
         && validExpiry(request.resource.data)
-        // Penyesuaian stok (opname/koreksi) hanya oleh admin; penyesuaian opname harus punya dokumen opname-nya
+        // Penyesuaian stok: hitung fisik (opname) oleh semua petugas, harus punya dokumen opname-nya;
+        // koreksi langsung hanya oleh admin
         && (!('adjust' in request.resource.data) || (
-             isAdmin() && request.resource.data.adjust in ['opname', 'koreksi']
-             && (request.resource.data.adjust != 'opname'
-                 || existsAfter(/databases/$(database)/documents/opname/$(request.resource.data.get('opnameId', 'x'))))))
+             (request.resource.data.adjust == 'opname'
+              && existsAfter(/databases/$(database)/documents/opname/$(request.resource.data.get('opnameId', 'x'))))
+             || (request.resource.data.adjust == 'koreksi' && isAdmin())))
         && (!('opnameId' in request.resource.data) || request.resource.data.get('adjust', '') == 'opname')
         // Stok item harus ikut diperbarui dalam batch yang sama
         && getAfter(/databases/$(database)/documents/items/$(request.resource.data.itemId)).data.lastTxId == txId

@@ -16,6 +16,8 @@ interface StokPageProps {
   onEditItem: (item: Item) => void;
   /** Perbarui ED; boleh untuk semua petugas. */
   onEditExpiry: (item: Item) => void;
+  /** Hitung fisik (stok opname); boleh untuk semua petugas. */
+  onHitungFisik: () => void;
   /** Saringan awal, mis. saat dibuka dari peringatan di Beranda. */
   initialFilter?: StockFilter;
 }
@@ -95,6 +97,7 @@ export function StokPage({
   onAddItem,
   onEditItem,
   onEditExpiry,
+  onHitungFisik,
   initialFilter = "semua",
 }: StokPageProps) {
   const [search, setSearch] = useState("");
@@ -118,13 +121,16 @@ export function StokPage({
       <h1 className="page-title">Stok Barang</h1>
       <p className="page-sub">Sisa obat dan bahan medis yang ada di UGD sekarang.</p>
 
-      {isAdmin && (
-        <div className="page-actions">
-          <button className="btn btn-primary" onClick={onAddItem}>
+      <div className="page-actions">
+        <button className="btn btn-primary" onClick={onHitungFisik}>
+          <Icon type="check" size={18} /> Hitung Fisik
+        </button>
+        {isAdmin && (
+          <button className="btn btn-ghost" onClick={onAddItem}>
             <Icon type="plus" size={18} /> Tambah Barang Baru
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="search-box search-box-page">
         <Icon type="search" size={20} />

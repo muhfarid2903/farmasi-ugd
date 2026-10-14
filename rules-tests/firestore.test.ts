@@ -226,12 +226,19 @@ describe("stok opname & koreksi", () => {
   it("admin boleh menyimpan opname beserta penyesuaian stoknya", async () => {
     await assertSucceeds(opnameBatch(as(ADMIN), ADMIN));
   });
-  it("petugas tidak boleh membuat opname atau penyesuaian", async () => {
-    await assertFails(opnameBatch(as(ANI), ANI));
+  it("petugas boleh menyimpan hitung fisik (opname) atas namanya sendiri", async () => {
+    await assertSucceeds(opnameBatch(as(ANI), ANI));
+  });
+  it("hitung fisik atas nama orang lain atau oleh akun nonaktif ditolak", async () => {
+    await assertFails(opnameBatch(as(ANI), BUDI));
+    await assertFails(opnameBatch(as(NONAKTIF), NONAKTIF));
+  });
+  it("koreksi langsung tetap khusus admin", async () => {
     await assertFails(txBatch(as(ANI), "k1", txBase(ANI, { qty: 1, adjust: "koreksi" }), -1));
   });
   it("penyesuaian opname tanpa dokumen opname ditolak", async () => {
     await assertFails(opnameBatch(as(ADMIN), ADMIN, false));
+    await assertFails(opnameBatch(as(ANI), ANI, false));
   });
   it("admin boleh mencatat koreksi stok", async () => {
     await assertSucceeds(txBatch(as(ADMIN), "k1", txBase(ADMIN, { type: "masuk", qty: 3, adjust: "koreksi" }), 3));

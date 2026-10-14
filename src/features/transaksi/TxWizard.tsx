@@ -32,12 +32,23 @@ interface TxWizardProps {
   onSave: (data: NewTx) => string;
   /** Batalkan transaksi yang baru saja disimpan; mengembalikan pesan kesalahan atau null jika berhasil. */
   onUndo: (txId: string, data: NewTx) => string | null;
+  /** Buka Hitung Fisik (untuk petugas yang sebenarnya sedang menghitung ulang stok). */
+  onHitungFisik: () => void;
   onClose: () => void;
 }
 
 const verb = (type: TxType) => (type === "masuk" ? "masuk" : "keluar");
 
-export function TxWizard({ type, items, transactions, operatorName, onSave, onUndo, onClose }: TxWizardProps) {
+export function TxWizard({
+  type,
+  items,
+  transactions,
+  operatorName,
+  onSave,
+  onUndo,
+  onHitungFisik,
+  onClose,
+}: TxWizardProps) {
   const [step, setStep] = useState<Step>("item");
   const [itemId, setItemId] = useState("");
   const [query, setQuery] = useState("");
@@ -179,6 +190,14 @@ export function TxWizard({ type, items, transactions, operatorName, onSave, onUn
         {step === "item" && (
           <>
             <h1 className="wizard-question">Barang apa yang {verb(type)}?</h1>
+            {type === "masuk" && (
+              <p className="form-hint wizard-recount">
+                Sedang <b>menghitung ulang stok</b> di lemari? Jangan lewat Barang Masuk.{" "}
+                <button className="btn-link" onClick={onHitungFisik}>
+                  Buka Hitung Fisik
+                </button>
+              </p>
+            )}
             <div className="search-big">
               <span className="search-big-icon">
                 <Icon type="search" size={22} />
